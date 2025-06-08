@@ -97,34 +97,6 @@ abstract class BaseFragment<B : ViewBinding>(private val fragmentLayout: Int) : 
         val contentResolver = requireContext().applicationContext.contentResolver
 
         contentResolver.query(
-            MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
-            arrayOf(
-                MediaStore.Video.Media._ID,
-                MediaStore.Video.Media.RELATIVE_PATH,
-                MediaStore.Video.Media.DATE_TAKEN,
-            ),
-            null,
-            null,
-            "${MediaStore.Video.Media.DISPLAY_NAME} ASC"
-        )?.use { cursor ->
-            val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media._ID)
-            val pathColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.RELATIVE_PATH)
-            val dateColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATE_TAKEN)
-
-            while (cursor.moveToNext()) {
-                val id = cursor.getLong(idColumn)
-                val path = cursor.getString(pathColumn)
-                val date = cursor.getLong(dateColumn)
-
-                val contentUri: Uri = ContentUris.withAppendedId(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id)
-
-                if (path == outputDirectory) {
-                    items.add(Media(contentUri, true, date))
-                }
-            }
-        }
-
-        contentResolver.query(
             MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
             arrayOf(
                 MediaStore.Images.Media._ID,
@@ -147,7 +119,7 @@ abstract class BaseFragment<B : ViewBinding>(private val fragmentLayout: Int) : 
                 val contentUri: Uri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
 
                 if (path == outputDirectory) {
-                    items.add(Media(contentUri, false, date))
+                    items.add(Media(contentUri, date))
                 }
             }
         }
@@ -160,7 +132,7 @@ abstract class BaseFragment<B : ViewBinding>(private val fragmentLayout: Int) : 
         File(outputDirectory).listFiles()?.forEach {
             val authority = requireContext().applicationContext.packageName + ".provider"
             val mediaUri = FileProvider.getUriForFile(requireContext(), authority, it)
-            items.add(Media(mediaUri, it.extension == "mp4", it.lastModified()))
+            items.add(Media(mediaUri, it.lastModified()))
         }
 
         return items

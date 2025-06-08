@@ -14,7 +14,7 @@ import com.robertlevonyan.demo.camerax.utils.layoutInflater
  * This is an adapter to preview taken photos or videos
  * */
 class MediaAdapter(
-    private val onItemClick: (Boolean, Uri) -> Unit,
+    private val onItemClick: (Uri) -> Unit,
     private val onDeleteClick: (Boolean, Uri) -> Unit,
 ) : ListAdapter<Media, MediaAdapter.PicturesViewHolder>(MediaDiffCallback()) {
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) =
@@ -42,12 +42,10 @@ class MediaAdapter(
 
     inner class PicturesViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val imagePreview: ImageView = itemView.findViewById(R.id.imagePreview)
-        private val imagePlay: ImageView = itemView.findViewById(R.id.imagePlay)
 
         fun bind(item: Media) {
-            imagePlay.visibility = if (item.isVideo) View.VISIBLE else View.GONE
             imagePreview.load(item.uri)
-            imagePreview.setOnClickListener { onItemClick(item.isVideo, item.uri) }
+            imagePreview.setOnClickListener { onItemClick(item.uri) }
         }
     }
 }

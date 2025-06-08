@@ -12,14 +12,9 @@ import com.robertlevonyan.demo.camerax.utils.*
 
 class PreviewFragment : BaseFragment<FragmentPreviewBinding>(R.layout.fragment_preview) {
     private val mediaAdapter = MediaAdapter(
-        onItemClick = { isVideo, uri ->
-            if (!isVideo) {
-                val visibility = if (binding.groupPreviewActions.visibility == View.VISIBLE) View.GONE else View.VISIBLE
-                binding.groupPreviewActions.visibility = visibility
-            } else {
-                val play = Intent(Intent.ACTION_VIEW, uri).apply { setDataAndType(uri, "video/mp4") }
-                startActivity(play)
-            }
+        onItemClick = { uri ->
+            val visibility = if (binding.groupPreviewActions.visibility == View.VISIBLE) View.GONE else View.VISIBLE
+            binding.groupPreviewActions.visibility = visibility
         },
         onDeleteClick = { isEmpty, uri ->
             if (isEmpty) onBackPressed()
