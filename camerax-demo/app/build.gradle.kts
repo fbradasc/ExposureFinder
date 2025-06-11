@@ -52,4 +52,5 @@ dependencies {
     implementation(libs.androidx.viewpager2)
     implementation(libs.coil)
     implementation(libs.coil.video)
+    implementation(libs.androidx.exifinterface)
 }

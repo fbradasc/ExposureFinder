@@ -19,6 +19,7 @@ composeCoil = "2.7.0"
 lifecycle = "2.8.7"
 navigation = "2.8.9"
 viewpager2 = "1.1.0"
+exifinterface = "1.4.1"
 
 [libraries]
 androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompat" }
@@ -52,6 +53,7 @@ androidx-compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-toolin
 activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityKtx" }
 compose-paging = { group = "androidx.paging", name = "paging-compose", version.ref = "composePaging" }
 compose-coil = { group = "io.coil-kt", name = "coil-compose", version.ref = "composeCoil" }
+androidx-exifinterface = { group = "androidx.exifinterface", name = "exifinterface", version.ref = "exifinterface" }
 
 [bundles]
 firebase = ["firebase-analytics-ktx", "firebase-crashlytics-ktx", "firebase-firestore-ktx"]

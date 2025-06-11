@@ -1,6 +1,7 @@
 package com.robertlevonyan.demo.camerax.fragments
 
 import android.annotation.SuppressLint
+import android.content.ContentResolver
 import android.content.ContentValues
 import android.content.Context
 import android.content.res.Configuration
@@ -35,23 +36,27 @@ import com.robertlevonyan.demo.camerax.analyzer.LuminosityAnalyzer
 import com.robertlevonyan.demo.camerax.databinding.FragmentCameraBinding
 import com.robertlevonyan.demo.camerax.utils.*
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
 import java.util.concurrent.ExecutionException
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
-import kotlin.properties.Delegates
 
+import android.graphics.BitmapFactory
 import android.graphics.Bitmap
 import android.graphics.ImageFormat
 import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
 import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Matrix
 import android.graphics.Paint
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
+import androidx.exifinterface.media.ExifInterface
+import java.io.ByteArrayOutputStream
+import java.io.FileOutputStream
 
 class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_camera) {
     // An instance for display manager to get display change callbacks
@@ -264,21 +269,49 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
         }, ContextCompat.getMainExecutor(requireContext()))
     }
 
-    fun yuvToBitmap(image: ImageProxy): Bitmap {
-        val yBuffer = image.planes[0].buffer
-        val uvBuffer = image.planes[1].buffer
-        val vuBuffer = image.planes[2].buffer
-        // Use a library or implement YUV to RGB conversion here.
-        // For brevity, use a helper function (not shown).
-        // Return a Bitmap in RGB format.
+    private fun rotateBitmap(src: Bitmap, rotationDegrees: Float): Bitmap {
+        val matrix = Matrix()
+        matrix.postRotate(rotationDegrees, src.width / 2f, src.height / 2f)
+        return Bitmap.createBitmap(src, 0, 0, src.width, src.height, matrix, true)
     }
 
-    fun applyGrayscaleWithContrast(src: Bitmap, contrast: Float = 1.0f): Bitmap {
+    private fun yuvToBitmap(image: ImageProxy): Bitmap {
+        val yBuffer = image.planes[0].buffer
+        val uBuffer = image.planes[1].buffer
+        val vBuffer = image.planes[2].buffer
+
+        val ySize = yBuffer.remaining()
+        val uSize = uBuffer.remaining()
+        val vSize = vBuffer.remaining()
+
+        val nv21 = ByteArray(ySize + uSize + vSize)
+        yBuffer.get(nv21, 0, ySize)
+        vBuffer.get(nv21, ySize, vSize)
+        uBuffer.get(nv21, ySize + vSize, uSize)
+
+        val yuvImage = android.graphics.YuvImage(
+            nv21,
+            ImageFormat.NV21,
+            image.width, image.height,
+            null
+        )
+        val out = ByteArrayOutputStream()
+        yuvImage.compressToJpeg(android.graphics.Rect(0, 0, image.width, image.height), 100, out)
+        val yuv = out.toByteArray()
+
+        val matrix = Matrix().apply {
+            postRotate(image.imageInfo.rotationDegrees.toFloat())
+        }
+        return BitmapFactory.decodeByteArray(yuv, 0, yuv.size)
+    }
+
+    fun applyFilters(src: Bitmap): Bitmap{
         val bmp = Bitmap.createBitmap(src.width, src.height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bmp)
         val paint = Paint()
         val colorMatrix = ColorMatrix()
         colorMatrix.setSaturation(0f) // Grayscale
+        val contrast = 1.0f
         if (contrast != 1.0f) {
             val scale = contrast
             val translate = (-0.5f * scale + 0.5f) * 255f
@@ -297,6 +330,172 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
         return bmp
     }
 
+    fun copyAllExifData(sourceExif: ExifInterface, targetExif: ExifInterface) {
+        val tags = arrayOf(
+            ExifInterface.TAG_APERTURE_VALUE,
+            ExifInterface.TAG_ARTIST,
+            ExifInterface.TAG_BITS_PER_SAMPLE,
+            ExifInterface.TAG_BRIGHTNESS_VALUE,
+            ExifInterface.TAG_CFA_PATTERN,
+            ExifInterface.TAG_COLOR_SPACE,
+            ExifInterface.TAG_COMPONENTS_CONFIGURATION,
+            ExifInterface.TAG_COMPRESSED_BITS_PER_PIXEL,
+            ExifInterface.TAG_COMPRESSION,
+            ExifInterface.TAG_CONTRAST,
+            ExifInterface.TAG_COPYRIGHT,
+            ExifInterface.TAG_CUSTOM_RENDERED,
+            ExifInterface.TAG_DATETIME,
+            ExifInterface.TAG_DATETIME_DIGITIZED,
+            ExifInterface.TAG_DATETIME_ORIGINAL,
+            ExifInterface.TAG_DEFAULT_CROP_SIZE,
+            ExifInterface.TAG_DEVICE_SETTING_DESCRIPTION,
+            ExifInterface.TAG_DIGITAL_ZOOM_RATIO,
+            ExifInterface.TAG_DNG_VERSION,
+            ExifInterface.TAG_EXIF_VERSION,
+            ExifInterface.TAG_EXPOSURE_BIAS_VALUE,
+            ExifInterface.TAG_EXPOSURE_INDEX,
+            ExifInterface.TAG_EXPOSURE_MODE,
+            ExifInterface.TAG_EXPOSURE_PROGRAM,
+            ExifInterface.TAG_EXPOSURE_TIME,
+            ExifInterface.TAG_F_NUMBER,
+            ExifInterface.TAG_FILE_SOURCE,
+            ExifInterface.TAG_FLASH,
+            ExifInterface.TAG_FLASH_ENERGY,
+            ExifInterface.TAG_FLASHPIX_VERSION,
+            ExifInterface.TAG_FOCAL_LENGTH,
+            ExifInterface.TAG_FOCAL_LENGTH_IN_35MM_FILM,
+            ExifInterface.TAG_FOCAL_PLANE_RESOLUTION_UNIT,
+            ExifInterface.TAG_FOCAL_PLANE_X_RESOLUTION,
+            ExifInterface.TAG_FOCAL_PLANE_Y_RESOLUTION,
+            ExifInterface.TAG_GAIN_CONTROL,
+            ExifInterface.TAG_GAMMA,
+            ExifInterface.TAG_GPS_ALTITUDE,
+            ExifInterface.TAG_GPS_ALTITUDE_REF,
+            ExifInterface.TAG_GPS_AREA_INFORMATION,
+            ExifInterface.TAG_GPS_DATESTAMP,
+            ExifInterface.TAG_GPS_DEST_BEARING,
+            ExifInterface.TAG_GPS_DEST_BEARING_REF,
+            ExifInterface.TAG_GPS_DEST_DISTANCE,
+            ExifInterface.TAG_GPS_DEST_DISTANCE_REF,
+            ExifInterface.TAG_GPS_DEST_LATITUDE,
+            ExifInterface.TAG_GPS_DEST_LATITUDE_REF,
+            ExifInterface.TAG_GPS_DEST_LONGITUDE,
+            ExifInterface.TAG_GPS_DEST_LONGITUDE_REF,
+            ExifInterface.TAG_GPS_DIFFERENTIAL,
+            ExifInterface.TAG_GPS_DOP,
+            ExifInterface.TAG_GPS_IMG_DIRECTION,
+            ExifInterface.TAG_GPS_IMG_DIRECTION_REF,
+            ExifInterface.TAG_GPS_LATITUDE,
+            ExifInterface.TAG_GPS_LATITUDE_REF,
+            ExifInterface.TAG_GPS_LONGITUDE,
+            ExifInterface.TAG_GPS_LONGITUDE_REF,
+            ExifInterface.TAG_GPS_MAP_DATUM,
+            ExifInterface.TAG_GPS_MEASURE_MODE,
+            ExifInterface.TAG_GPS_PROCESSING_METHOD,
+            ExifInterface.TAG_GPS_SATELLITES,
+            ExifInterface.TAG_GPS_SPEED,
+            ExifInterface.TAG_GPS_SPEED_REF,
+            ExifInterface.TAG_GPS_STATUS,
+            ExifInterface.TAG_GPS_TIMESTAMP,
+            ExifInterface.TAG_GPS_TRACK,
+            ExifInterface.TAG_GPS_TRACK_REF,
+            ExifInterface.TAG_GPS_VERSION_ID,
+            ExifInterface.TAG_IMAGE_DESCRIPTION,
+            ExifInterface.TAG_IMAGE_LENGTH,
+            ExifInterface.TAG_IMAGE_UNIQUE_ID,
+            ExifInterface.TAG_IMAGE_WIDTH,
+            ExifInterface.TAG_INTEROPERABILITY_INDEX,
+            ExifInterface.TAG_ISO_SPEED_RATINGS,
+            ExifInterface.TAG_JPEG_INTERCHANGE_FORMAT,
+            ExifInterface.TAG_JPEG_INTERCHANGE_FORMAT_LENGTH,
+            ExifInterface.TAG_LIGHT_SOURCE,
+            ExifInterface.TAG_MAKE,
+            ExifInterface.TAG_MAKER_NOTE,
+            ExifInterface.TAG_MAX_APERTURE_VALUE,
+            ExifInterface.TAG_METERING_MODE,
+            ExifInterface.TAG_MODEL,
+            ExifInterface.TAG_NEW_SUBFILE_TYPE,
+            ExifInterface.TAG_OECF,
+            ExifInterface.TAG_ORF_ASPECT_FRAME,
+            ExifInterface.TAG_ORF_PREVIEW_IMAGE_LENGTH,
+            ExifInterface.TAG_ORF_PREVIEW_IMAGE_START,
+            ExifInterface.TAG_ORF_THUMBNAIL_IMAGE,
+            ExifInterface.TAG_ORIENTATION,
+            ExifInterface.TAG_PHOTOMETRIC_INTERPRETATION,
+            ExifInterface.TAG_PIXEL_X_DIMENSION,
+            ExifInterface.TAG_PIXEL_Y_DIMENSION,
+            ExifInterface.TAG_PLANAR_CONFIGURATION,
+            ExifInterface.TAG_PRIMARY_CHROMATICITIES,
+            ExifInterface.TAG_REFERENCE_BLACK_WHITE,
+            ExifInterface.TAG_RELATED_SOUND_FILE,
+            ExifInterface.TAG_RESOLUTION_UNIT,
+            ExifInterface.TAG_ROWS_PER_STRIP,
+            ExifInterface.TAG_RW2_ISO,
+            ExifInterface.TAG_RW2_JPG_FROM_RAW,
+            ExifInterface.TAG_SAMPLES_PER_PIXEL,
+            ExifInterface.TAG_SATURATION,
+            ExifInterface.TAG_SCENE_CAPTURE_TYPE,
+            ExifInterface.TAG_SCENE_TYPE,
+            ExifInterface.TAG_SENSING_METHOD,
+            ExifInterface.TAG_SHARPNESS,
+            ExifInterface.TAG_SHUTTER_SPEED_VALUE,
+            ExifInterface.TAG_SOFTWARE,
+            ExifInterface.TAG_SPATIAL_FREQUENCY_RESPONSE,
+            ExifInterface.TAG_SPECTRAL_SENSITIVITY,
+            ExifInterface.TAG_STRIP_BYTE_COUNTS,
+            ExifInterface.TAG_STRIP_OFFSETS,
+            ExifInterface.TAG_SUBFILE_TYPE,
+            ExifInterface.TAG_SUBSEC_TIME,
+            ExifInterface.TAG_SUBSEC_TIME_DIGITIZED,
+            ExifInterface.TAG_SUBSEC_TIME_ORIGINAL,
+            ExifInterface.TAG_THUMBNAIL_IMAGE_LENGTH,
+            ExifInterface.TAG_THUMBNAIL_IMAGE_WIDTH,
+            ExifInterface.TAG_TRANSFER_FUNCTION,
+            ExifInterface.TAG_USER_COMMENT,
+            ExifInterface.TAG_WHITE_BALANCE,
+            ExifInterface.TAG_WHITE_POINT,
+            ExifInterface.TAG_X_RESOLUTION,
+            ExifInterface.TAG_Y_CB_CR_COEFFICIENTS,
+            ExifInterface.TAG_Y_CB_CR_POSITIONING,
+            ExifInterface.TAG_Y_CB_CR_SUB_SAMPLING,
+            ExifInterface.TAG_Y_RESOLUTION
+        )
+        for (tag in tags) {
+            val value = sourceExif.getAttribute(tag)
+            if (value != null) targetExif.setAttribute(tag, value)
+        }
+        targetExif.saveAttributes()
+    }
+
+    private fun processAndSaveImageWithExif(
+        contentResolver: ContentResolver,
+        imageUri: Uri,
+    ) {
+        // 1. Decode bitmap from Uri
+        val inputStream = contentResolver.openInputStream(imageUri) ?: return
+        val tempFile = File.createTempFile("temp_image", ".jpg")
+        FileOutputStream(tempFile).use { out ->
+            inputStream.copyTo(out)
+        }
+        inputStream.close()
+
+        val originalExif = ExifInterface(tempFile.absolutePath)
+
+        val bitmap = BitmapFactory.decodeFile(tempFile.absolutePath)
+
+        val filtered = applyFilters(bitmap)
+
+        val outputStream = contentResolver.openOutputStream(imageUri) ?: return
+        filtered.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
+        outputStream.close()
+
+        val newExif = ExifInterface(contentResolver.openFileDescriptor(imageUri, "rw")!!.fileDescriptor)
+
+        copyAllExifData(originalExif, newExif)
+
+        tempFile.delete()
+    }
+
     private fun setLuminosityAnalyzer(imageAnalysis: ImageAnalysis) {
         // Use a worker thread for image analysis to prevent glitches
         val analyzerThread = HandlerThread("LuminosityAnalysis").apply { start() }
@@ -305,9 +504,12 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
             // LuminosityAnalyzer()
             { imageProxy ->
                 val bitmap = yuvToBitmap(imageProxy)
-                val processed = applyGrayscaleWithContrast(bitmap, contrast = 1.2f)
-                binding.filterViewFinder.setImageBitmap(processed)
+                val filteredAndRotated = rotateBitmap(applyFilters(bitmap),
+                    imageProxy.imageInfo.rotationDegrees.toFloat())
                 imageProxy.close()
+                binding.filterViewFinder.post {
+                    binding.filterViewFinder.setImageBitmap(filteredAndRotated)
+                }
             })
         }
 
@@ -370,10 +572,13 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
             isReversedHorizontal = lensFacing == CameraSelector.DEFAULT_FRONT_CAMERA
         }
         MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+
+        val filename = System.currentTimeMillis()
+
         // Options fot the output image file
         val outputOptions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val contentValues = ContentValues().apply {
-                put(MediaStore.MediaColumns.DISPLAY_NAME, System.currentTimeMillis())
+                put(MediaStore.MediaColumns.DISPLAY_NAME, "${filename}")
                 put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
                 put(MediaStore.MediaColumns.RELATIVE_PATH, outputDirectory)
             }
@@ -386,7 +591,7 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
             OutputFileOptions.Builder(contentResolver, contentUri, contentValues)
         } else {
             File(outputDirectory).mkdirs()
-            val file = File(outputDirectory, "${System.currentTimeMillis()}.jpg")
+            val file = File(outputDirectory, "${filename}.jpg")
 
             OutputFileOptions.Builder(file)
         }.setMetadata(metadata).build()
@@ -399,8 +604,10 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
                     // This function is called if capture is successfully completed
                     outputFileResults.savedUri
                         ?.let { uri ->
+                            val contentResolver = requireContext().contentResolver
+                            processAndSaveImageWithExif(contentResolver, uri)
                             setGalleryThumbnail(uri)
-                            Log.d(TAG, "Photo saved in $uri")
+                            Log.d(TAG, "Photo saved in ${uri.path}")
                         }
                         ?: setLastPictureThumbnail()
                 }
