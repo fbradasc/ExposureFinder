@@ -104,7 +104,7 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
         displayManager.registerDisplayListener(displayListener, null)
 
         binding.run {
-            viewFinder.addOnAttachStateChangeListener(object :
+            cameraViewFinder.addOnAttachStateChangeListener(object :
                 View.OnAttachStateChangeListener {
                 override fun onViewDetachedFromWindow(v: View) =
                     displayManager.registerDisplayListener(displayListener, null)
@@ -126,7 +126,7 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
                 })
             }
             val gestureDetectorCompat = GestureDetector(requireContext(), swipeGestures)
-            viewFinder.setOnTouchListener { _, motionEvent ->
+            cameraViewFinder.setOnTouchListener { _, motionEvent ->
                 if (gestureDetectorCompat.onTouchEvent(motionEvent)) return@setOnTouchListener false
                 return@setOnTouchListener true
             }
@@ -187,7 +187,7 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
 
     override fun onPermissionGranted() {
         // Each time apps is coming to foreground the need permission check is being processed
-        binding.viewFinder.let { vf ->
+        binding.cameraViewFinder.let { vf ->
             vf.post {
                 // Setting current display ID
                 displayId = vf.display.displayId
@@ -211,7 +211,7 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
      * */
     private fun startCamera() {
         // This is the CameraX PreviewView where the camera will be rendered
-        val viewFinder = binding.viewFinder
+        val cameraViewFinder = binding.cameraViewFinder
 
         val cameraProviderFuture = ProcessCameraProvider.getInstance(requireContext())
         cameraProviderFuture.addListener({
@@ -226,11 +226,11 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
             }
 
             // The display information
-            val metrics = DisplayMetrics().also { viewFinder.display.getRealMetrics(it) }
+            val metrics = DisplayMetrics().also { cameraViewFinder.display.getRealMetrics(it) }
             // The ratio for the output image and preview
             val aspectRatio = aspectRatio(metrics.widthPixels, metrics.heightPixels)
             // The display rotation
-            val rotation = viewFinder.display.rotation
+            val rotation = cameraViewFinder.display.rotation
 
             val localCameraProvider = cameraProvider
                 ?: throw IllegalStateException("Camera initialization failed.")
@@ -260,7 +260,7 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
             // Unbind the use-cases before rebinding them
             localCameraProvider.unbindAll()
             // Bind all use cases to the camera with lifecycle
-            bindToLifecycle(localCameraProvider, viewFinder)
+            bindToLifecycle(localCameraProvider, cameraViewFinder)
         }, ContextCompat.getMainExecutor(requireContext()))
     }
 
@@ -306,12 +306,12 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
             { imageProxy ->
                 val bitmap = yuvToBitmap(imageProxy)
                 val processed = applyGrayscaleWithContrast(bitmap, contrast = 1.2f)
-                // Display 'processed' in an ImageView on the UI thread
+                binding.filterViewFinder.setImageBitmap(processed)
                 imageProxy.close()
             })
         }
 
-    private fun bindToLifecycle(localCameraProvider: ProcessCameraProvider, viewFinder: PreviewView) {
+    private fun bindToLifecycle(localCameraProvider: ProcessCameraProvider, cameraViewFinder: PreviewView) {
         try {
             localCameraProvider.bindToLifecycle(
                 viewLifecycleOwner, // current lifecycle owner
@@ -338,8 +338,8 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
                 }
             }
 
-            // Attach the viewfinder's surface provider to preview use case
-            preview?.setSurfaceProvider(viewFinder.surfaceProvider)
+            // Attach the cameraViewfinder's surface provider to preview use case
+            preview?.setSurfaceProvider(cameraViewFinder.surfaceProvider)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to bind use cases", e)
         }
