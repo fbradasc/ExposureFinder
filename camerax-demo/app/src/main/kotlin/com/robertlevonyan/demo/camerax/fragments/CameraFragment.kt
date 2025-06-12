@@ -42,6 +42,7 @@ import java.util.concurrent.ExecutionException
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.ln
 
 import android.graphics.BitmapFactory
 import android.graphics.Bitmap
@@ -52,11 +53,15 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Matrix
 import android.graphics.Paint
+import android.os.Looper
+import android.util.Size
+import androidx.appcompat.app.AlertDialog
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import androidx.exifinterface.media.ExifInterface
 import java.io.ByteArrayOutputStream
 import java.io.FileOutputStream
+import kotlin.math.floor
 
 class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_camera) {
     // An instance for display manager to get display change callbacks
@@ -118,11 +123,24 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
                     displayManager.unregisterDisplayListener(displayListener)
             })
 
-            btnTakePicture.setOnClickListener { takePicture() }
+            btnTakePicture.setOnClickListener { readExposureData() }
+            btnTakePicture.setOnLongClickListener { takePicture(); true }
             btnGallery.setOnClickListener { openPreview() }
             btnGrid.setOnClickListener { toggleGrid() }
             btnExposure.setOnClickListener { flExposure.visibility = View.VISIBLE }
             flExposure.setOnClickListener { flExposure.visibility = View.GONE }
+            btnContrast.setOnClickListener { flContrast.visibility = View.VISIBLE }
+            flContrast.setOnClickListener { flContrast.visibility = View.GONE }
+            sliderContrast.run {
+                valueFrom = 0.2f
+                valueTo = 2.0f
+                stepSize = 0.2f
+                value = 1.0f
+
+                addOnChangeListener { _, value, _ ->
+                    contrast = value.toFloat()
+                }
+            }
 /* TODO: switch to settings fragment
             // This swipe gesture adds a fun gesture to switch between video and photo
             val swipeGestures = SwipeGestureDetector().apply {
@@ -240,9 +258,12 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
             val localCameraProvider = cameraProvider
                 ?: throw IllegalStateException("Camera initialization failed.")
 
+            val screenSize = Size(cameraViewFinder.width, cameraViewFinder.height)
+
             // The Configuration of camera preview
             preview = Preview.Builder()
-                .setTargetAspectRatio(aspectRatio) // set the camera aspect ratio
+                // .setTargetAspectRatio(aspectRatio) // set the camera aspect ratio
+                .setTargetResolution(screenSize)
                 .setTargetRotation(rotation) // set the camera rotation
                 .build()
 
@@ -256,11 +277,12 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
 
             // The Configuration of image analyzing
             imageAnalyzer = ImageAnalysis.Builder()
-                .setTargetAspectRatio(aspectRatio) // set the analyzer aspect ratio
+                // .setTargetAspectRatio(aspectRatio) // set the analyzer aspect ratio
+                .setTargetResolution(screenSize)
                 .setTargetRotation(rotation) // set the analyzer rotation
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST) // in our analysis, we care about the latest image
                 .build()
-                .also { setLuminosityAnalyzer(it) }
+                .also { setFiltersActuator(it) }
 
             // Unbind the use-cases before rebinding them
             localCameraProvider.unbindAll()
@@ -311,7 +333,6 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
         val paint = Paint()
         val colorMatrix = ColorMatrix()
         colorMatrix.setSaturation(0f) // Grayscale
-        val contrast = 1.0f
         if (contrast != 1.0f) {
             val scale = contrast
             val translate = (-0.5f * scale + 0.5f) * 255f
@@ -462,8 +483,12 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
         )
         for (tag in tags) {
             val value = sourceExif.getAttribute(tag)
-            if (value != null) targetExif.setAttribute(tag, value)
+            if (value != null) {
+                Log.d(TAG, "${tag}: ${value}")
+                targetExif.setAttribute(tag, value)
+            }
         }
+
         targetExif.saveAttributes()
     }
 
@@ -473,7 +498,14 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
     ) {
         // 1. Decode bitmap from Uri
         val inputStream = contentResolver.openInputStream(imageUri) ?: return
-        val tempFile = File.createTempFile("temp_image", ".jpg")
+        val filename = System.currentTimeMillis()
+        val tempFile = createTemporaryFile("exif_temp_image_${filename}", ".jpg")
+
+        if (tempFile == null) {
+            Log.e(TAG, "Failed to create temporary file for image capture")
+            return
+        }
+
         FileOutputStream(tempFile).use { out ->
             inputStream.copyTo(out)
         }
@@ -496,7 +528,7 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
         tempFile.delete()
     }
 
-    private fun setLuminosityAnalyzer(imageAnalysis: ImageAnalysis) {
+    private fun setFiltersActuator(imageAnalysis: ImageAnalysis) {
         // Use a worker thread for image analysis to prevent glitches
         val analyzerThread = HandlerThread("LuminosityAnalysis").apply { start() }
         imageAnalysis.setAnalyzer(
@@ -562,9 +594,138 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
         return AspectRatio.RATIO_16_9
     }
 
+    private fun createTemporaryFile(prefix: String, suffix: String): File? {
+        return try {
+            // Create a temporary file in the app's cache directory
+            File.createTempFile(prefix, suffix).apply {
+                deleteOnExit() // Ensure the file is deleted when the app exits
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error creating temporary file: ${e.message}", e)
+            null
+        }
+    }
+
+    private fun convertTvAv(av1: Double, tv1: Double, iso1: Double, iso2: Double): Pair<Double, Double> {
+        val delta = ln(iso2 / iso1) / ln(2.0)
+        val tv2 = tv1 - delta
+        val av2 = av1 + delta
+        return Pair(av2, tv2)
+    }
+
+    private fun calculateEv(av: Double, tv: Double, iso: Double): Double {
+        val ev = av + tv - (ln(iso / 100.0) / ln(2.0))
+        return ev
+    }
+
+    fun showSimpleDialog(context: Context, message: String) {
+        AlertDialog.Builder(context)
+            .setMessage(message)
+            .setPositiveButton("OK") { dialog, _ -> dialog.dismiss() }
+            .show()
+    }
+
+    fun showTimedDialog(context: Context, message: String, durationMs: Long = 2000) {
+        val dialog = AlertDialog.Builder(context)
+            .setMessage(message)
+            .setCancelable(false)
+            .create()
+        dialog.show()
+        Handler(Looper.getMainLooper()).postDelayed({
+            dialog.dismiss()
+        }, durationMs)
+    }
+
+    private fun extractMetadata(fd: File) {
+        Log.d(TAG, "Extracting metadata from image...")
+        try {
+            // Use the FileDescriptor from the ParcelFileDescriptor
+//            val fd = pfd.fileDescriptor
+
+            // Use ExifInterface to read metadata from the saved image
+            val exif = ExifInterface(fd)
+
+            var av = exif.getAttributeDouble(ExifInterface.TAG_F_NUMBER, 0.0)
+            var tv = exif.getAttributeDouble(ExifInterface.TAG_EXPOSURE_TIME, 0.0)
+            var sv = exif.getAttributeDouble(ExifInterface.TAG_PHOTOGRAPHIC_SENSITIVITY,100.0)
+
+            if (abs(tv) > 0.00001) {
+                tv = 1.0 / tv
+            }
+
+            val ev = calculateEv(av,tv,sv)
+
+            val iso = 400.0
+
+            var (avIso, tvIso) = convertTvAv(av,tv,sv,iso)
+
+            var evIso = calculateEv(avIso,tvIso,iso)
+
+            avIso = ( avIso * 100 ).toInt() / 100.0
+
+            val itvIso = tvIso.toInt()
+            val ievIso = evIso.toInt()
+            val iev    = ev.toInt()
+            val itv    = tv.toInt()
+            val isv    = sv.toInt()
+            val iiso   = iso.toInt()
+
+            val msg = "EV ${iev} @ ISO=${isv}: F ${av} T 1/${itv}" +
+                      "\n" +
+                      "EV ${ievIso} @ ISO=${iiso}: F ${avIso} T 1/${itvIso}" +
+                      "\n" +
+                      "\n" +
+                      "Long press the shutter button to capture a picture"
+
+            showSimpleDialog(requireContext(), msg)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to extract metadata: ${e.message}", e)
+        }
+    }
+
+    @Suppress("NON_EXHAUSTIVE_WHEN")
+    private fun readExposureData() = lifecycleScope.launch(Dispatchers.Main) {
+        val localImageCapture = imageCapture ?: throw IllegalStateException("Camera initialization failed.")
+
+        // Setup image capture metadata
+        val metadata = Metadata().apply {
+            // Mirror image when using the front camera
+            isReversedHorizontal = lensFacing == CameraSelector.DEFAULT_FRONT_CAMERA
+        }
+        MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+
+        val filename = System.currentTimeMillis()
+        val tempFile = createTemporaryFile("exposure_temp_image_${filename}", ".jpg")
+
+        if (tempFile != null) {
+            val outputOptions = OutputFileOptions.Builder(tempFile).setMetadata(metadata).build()
+
+            localImageCapture.takePicture(
+                outputOptions,
+                requireContext().mainExecutor(), // the executor, on which the task will run
+                object : OnImageSavedCallback {
+                    override fun onImageSaved(outputFileResults: OutputFileResults) {
+                        extractMetadata(tempFile)
+                    }
+
+                    override fun onError(exception: ImageCaptureException) {
+                        // This function is called if there is an errors during capture process
+                        val msg = "Photo capture failed: ${exception.message}"
+                        Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show()
+                        Log.e(TAG, msg)
+                        exception.printStackTrace()
+                    }
+                }
+            )
+        }
+    }
+
     @Suppress("NON_EXHAUSTIVE_WHEN")
     private fun takePicture() = lifecycleScope.launch(Dispatchers.Main) {
         val localImageCapture = imageCapture ?: throw IllegalStateException("Camera initialization failed.")
+
+        val msg = "Short press the shutter button to read exposure"
+        showTimedDialog(requireContext(), msg)
 
         // Setup image capture metadata
         val metadata = Metadata().apply {
@@ -654,5 +815,7 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
 
         private const val RATIO_4_3_VALUE = 4.0 / 3.0 // aspect ratio 4x3
         private const val RATIO_16_9_VALUE = 16.0 / 9.0 // aspect ratio 16x9
+
+        private var contrast: Float = 1.0f
     }
 }
