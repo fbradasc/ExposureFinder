@@ -62,6 +62,7 @@ import androidx.exifinterface.media.ExifInterface
 import java.io.ByteArrayOutputStream
 import java.io.FileOutputStream
 import kotlin.math.floor
+import kotlin.math.pow
 
 class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_camera) {
     // An instance for display manager to get display change callbacks
@@ -608,14 +609,16 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
 
     private fun convertTvAv(av1: Double, tv1: Double, iso1: Double, iso2: Double): Pair<Double, Double> {
         val delta = ln(iso2 / iso1) / ln(2.0)
-        val tv2 = tv1 - delta
-        val av2 = av1 + delta
+        val av2 = av1
+        val tv2 = 2.0.pow( ( ln(tv1) / ln(2.0) ) + delta )
         return Pair(av2, tv2)
     }
 
-    private fun calculateEv(av: Double, tv: Double, iso: Double): Double {
-        val ev = av + tv - (ln(iso / 100.0) / ln(2.0))
-        return ev
+    private fun calculateLv(av: Double, tv: Double, sv: Double): Double {
+        // 4.3(100) = 1.8 @ 1/60
+        val ev = ( ln( ( av * av ) * tv ) / ln( 2.0 ) )
+        val dv = ( ln ( sv / 100.0 ) / ln( 2.0 ) )
+        return ev - dv
     }
 
     fun showSimpleDialog(context: Context, message: String) {
@@ -653,26 +656,26 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
                 tv = 1.0 / tv
             }
 
-            val ev = calculateEv(av,tv,sv)
+            val lv = calculateLv(av,tv,sv)
 
             val iso = 400.0
 
             var (avIso, tvIso) = convertTvAv(av,tv,sv,iso)
 
-            var evIso = calculateEv(avIso,tvIso,iso)
+            var lvIso = calculateLv(avIso,tvIso,iso)
 
             avIso = ( avIso * 100 ).toInt() / 100.0
 
             val itvIso = tvIso.toInt()
-            val ievIso = evIso.toInt()
-            val iev    = ev.toInt()
+            val ilvIso = ( lvIso * 100 ).toInt() / 100.0
+            val ilv    = ( lv * 100 ).toInt() / 100.0
             val itv    = tv.toInt()
             val isv    = sv.toInt()
             val iiso   = iso.toInt()
 
-            val msg = "EV ${iev} @ ISO=${isv}: F ${av} T 1/${itv}" +
+            val msg = "LV ${ilv} @ ISO=${isv}: F ${av} T 1/${itv}" +
                       "\n" +
-                      "EV ${ievIso} @ ISO=${iiso}: F ${avIso} T 1/${itvIso}" +
+                      "LV ${ilvIso} @ ISO=${iiso}: F ${avIso} T 1/${itvIso}" +
                       "\n" +
                       "\n" +
                       "Long press the shutter button to capture a picture"
