@@ -292,22 +292,23 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
                     override fun onCaptureCompleted(session: CameraCaptureSession,
                                                     request: CaptureRequest,
                                                     result: TotalCaptureResult) {
-                        val tv = result.get(CaptureResult.)
+                        val tv = result.get(CaptureResult.SENSOR_EXPOSURE_TIME) // nanoseconds
                         val sv = result.get(CaptureResult.SENSOR_SENSITIVITY)
-                        val av = result.get(CaptureResult.CONTROL_AE_EXPOSURE_COMPENSATION)
+                        val av = result.get(CaptureResult.LENS_APERTURE)
 
                         Log.d(TAG,"T:${tv},F:${av},ISO:${sv}")
 
                         if ((tv != null) && (sv != null) && (av != null)) {
-                            val dtv=tv.toDouble()
+                            val dtv = (tv.toLong() / 1000000000).toDouble();
                             val dav=av.toDouble()
-                            val dsv=av.toDouble()
+                            val dsv=sv.toDouble()
                             val lv = calculateLv(dav, dtv, dsv)
 
-                            // if (exposure != lv) {
-                                // exposure = lv
-                                binding.textExposure.setText("LV:${exposure}-T:${dtv},F:${dav},ISO:${dsv}")
-                            // }
+                            if (exposure != lv) {
+                                exposure = lv
+                                val info = "LV:${exposure}-T:${dtv},F:${dav},ISO:${dsv}"
+                                binding.textExposure.text = info
+                            }
                         }
                     }
                 }
