@@ -71,6 +71,7 @@ import kotlin.math.pow
 
 import androidx.camera.camera2.interop.Camera2Interop
 import androidx.camera.camera2.interop.ExperimentalCamera2Interop
+import kotlin.math.roundToInt
 
 class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_camera) {
     // An instance for display manager to get display change callbacks
@@ -132,8 +133,7 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
                     displayManager.unregisterDisplayListener(displayListener)
             })
 
-            btnTakePicture.setOnClickListener { readExposureData() }
-            btnTakePicture.setOnLongClickListener { takePicture(); true }
+            btnTakePicture.setOnClickListener { takePicture() }
             btnGallery.setOnClickListener { openPreview() }
             btnGrid.setOnClickListener { toggleGrid() }
             btnExposure.setOnClickListener { flExposure.visibility = View.VISIBLE }
@@ -238,6 +238,10 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
             ?: binding.btnGallery.setImageResource(R.drawable.ic_no_picture) // or the default placeholder
     }
 
+    private fun roundVal(v: Double, r: Double): Double {
+        return ( v * r.toInt() ).roundToInt() / r
+    }
+
     /**
      * Unbinds all the lifecycles from CameraX, then creates new with new parameters
      * */
@@ -292,22 +296,42 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
                     override fun onCaptureCompleted(session: CameraCaptureSession,
                                                     request: CaptureRequest,
                                                     result: TotalCaptureResult) {
-                        val tv = result.get(CaptureResult.SENSOR_EXPOSURE_TIME) // nanoseconds
-                        val sv = result.get(CaptureResult.SENSOR_SENSITIVITY)
-                        val av = result.get(CaptureResult.LENS_APERTURE)
-
-                        Log.d(TAG,"T:${tv},F:${av},ISO:${sv}")
+                        var tv = result.get(CaptureResult.SENSOR_EXPOSURE_TIME) // nanoseconds
+                        var sv = result.get(CaptureResult.SENSOR_SENSITIVITY)
+                        var av = result.get(CaptureResult.LENS_APERTURE)
 
                         if ((tv != null) && (sv != null) && (av != null)) {
-                            val dtv = (tv.toLong() / 1000000000).toDouble();
-                            val dav=av.toDouble()
-                            val dsv=sv.toDouble()
-                            val lv = calculateLv(dav, dtv, dsv)
+                            val dtv = ( 1000000000 / tv.toDouble() ).toDouble()
+                            val dav = av.toDouble()
+                            val lv = roundVal(calculateLv(dav, dtv, sv.toDouble()), 10.0)
 
                             if (exposure != lv) {
                                 exposure = lv
-                                val info = "LV:${exposure}-T:${dtv},F:${dav},ISO:${dsv}"
-                                binding.textExposure.text = info
+
+                                val nsv = 400.0 // TODO: let the user chooses the film ISO
+                                var (nav, ntv) = convertTvAv(dav, dtv, sv.toDouble(), nsv)
+                                val ev = roundVal(calculateEv(nav, ntv), 10.0)
+                                val result: Pair<Double, Double>? = fitAvTvInRange(nav, ntv)
+
+                                var stv="---"
+                                var sav="---"
+
+                                if (result != null) {
+                                    stv = if (result.second > 1.0) {
+                                        val itv = result.second.toInt()
+                                        "1/${itv}"
+                                    } else {
+                                        val itv = (1.0 / result.second).toInt()
+                                        "${itv}"
+                                    }
+                                    val rav = roundVal(result.first.toDouble(), 10.0)
+                                    sav = "${rav}"
+                                }
+
+                                val isv = nsv.toInt()
+
+                                binding.textExposure.text =
+                                    "${exposure}\n${ev}\n${isv}\n${stv}\n${sav}"
                             }
                         }
                     }
@@ -645,6 +669,35 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
         }
     }
 
+    fun findAvTvPair(
+        allowedAvs: List<Double>,
+        allowedTvs: List<Double>,
+        avi: Double,
+        tvi: Double,
+    ): Pair<Double, Double>? {
+        val targetEv = calculateEv(avi, tvi)
+        var closestPair: Pair<Double, Double>? = null
+        var minDiff = Double.MAX_VALUE
+        for (av in allowedAvs) {
+            for (tv in allowedTvs) {
+                val ev = calculateEv(av, tv)
+                val diff = kotlin.math.abs(ev - targetEv)
+                if (diff < minDiff) {
+                    minDiff = diff
+                    closestPair = Pair(av, tv)
+                }
+                if (diff == 0.0) return Pair(av, tv)
+            }
+        }
+        return closestPair
+    }
+
+    private fun fitAvTvInRange(av: Double, tv: Double): Pair<Double, Double>? {
+        val allowedAvs = listOf<Double>(/*1.4, 2.8,*/ 3.5, 4.0, 5.6, 8.0, 11.0, 16.0, 22.0)
+        val allowedTvs = listOf<Double>(/*1000.0,*/ 500.0, 250.0, 125.0, 60.0, 30.0, 15.0, 8.0, 4.0, 2.0, 1.0, 0.5, 0.25)
+        return findAvTvPair(allowedAvs, allowedTvs, av, tv)
+    }
+
     private fun convertTvAv(av1: Double, tv1: Double, iso1: Double, iso2: Double): Pair<Double, Double> {
         val delta = ln(iso2 / iso1) / ln(2.0)
         val av2 = av1
@@ -652,121 +705,20 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
         return Pair(av2, tv2)
     }
 
+    private fun calculateEv(av: Double, tv: Double): Double {
+        return ( ln( ( av * av ) * tv ) / ln( 2.0 ) )
+    }
+
     private fun calculateLv(av: Double, tv: Double, sv: Double): Double {
         // 4.3(100) = 1.8 @ 1/60
-        val ev = ( ln( ( av * av ) * tv ) / ln( 2.0 ) )
+        val ev = calculateEv(av, tv)
         val dv = ( ln ( sv / 100.0 ) / ln( 2.0 ) )
         return ev - dv
-    }
-
-    fun showSimpleDialog(context: Context, message: String) {
-        AlertDialog.Builder(context)
-            .setMessage(message)
-            .setPositiveButton("OK") { dialog, _ -> dialog.dismiss() }
-            .show()
-    }
-
-    fun showTimedDialog(context: Context, message: String, durationMs: Long = 2000) {
-        val dialog = AlertDialog.Builder(context)
-            .setMessage(message)
-            .setCancelable(false)
-            .create()
-        dialog.show()
-        Handler(Looper.getMainLooper()).postDelayed({
-            dialog.dismiss()
-        }, durationMs)
-    }
-
-    private fun extractMetadata(fd: File) {
-        Log.d(TAG, "Extracting metadata from image...")
-        try {
-            // Use the FileDescriptor from the ParcelFileDescriptor
-//            val fd = pfd.fileDescriptor
-
-            // Use ExifInterface to read metadata from the saved image
-            val exif = ExifInterface(fd)
-
-            var av = exif.getAttributeDouble(ExifInterface.TAG_F_NUMBER, 0.0)
-            var tv = exif.getAttributeDouble(ExifInterface.TAG_EXPOSURE_TIME, 0.0)
-            var sv = exif.getAttributeDouble(ExifInterface.TAG_PHOTOGRAPHIC_SENSITIVITY,100.0)
-
-            if (abs(tv) > 0.00001) {
-                tv = 1.0 / tv
-            }
-
-            val lv = calculateLv(av,tv,sv)
-
-            val iso = 400.0
-
-            var (avIso, tvIso) = convertTvAv(av,tv,sv,iso)
-
-            var lvIso = calculateLv(avIso,tvIso,iso)
-
-            avIso = ( avIso * 100 ).toInt() / 100.0
-
-            val itvIso = tvIso.toInt()
-            val ilvIso = ( lvIso * 100 ).toInt() / 100.0
-            val ilv    = ( lv * 100 ).toInt() / 100.0
-            val itv    = tv.toInt()
-            val isv    = sv.toInt()
-            val iiso   = iso.toInt()
-
-            val msg = "LV ${ilv} @ ISO=${isv}: F ${av} T 1/${itv}" +
-                      "\n" +
-                      "LV ${ilvIso} @ ISO=${iiso}: F ${avIso} T 1/${itvIso}" +
-                      "\n" +
-                      "\n" +
-                      "Long press the shutter button to capture a picture"
-
-            showSimpleDialog(requireContext(), msg)
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to extract metadata: ${e.message}", e)
-        }
-    }
-
-    @Suppress("NON_EXHAUSTIVE_WHEN")
-    private fun readExposureData() = lifecycleScope.launch(Dispatchers.Main) {
-        val localImageCapture = imageCapture ?: throw IllegalStateException("Camera initialization failed.")
-
-        // Setup image capture metadata
-        val metadata = Metadata().apply {
-            // Mirror image when using the front camera
-            isReversedHorizontal = lensFacing == CameraSelector.DEFAULT_FRONT_CAMERA
-        }
-        MediaStore.Images.Media.EXTERNAL_CONTENT_URI
-
-        val filename = System.currentTimeMillis()
-        val tempFile = createTemporaryFile("exposure_temp_image_${filename}", ".jpg")
-
-        if (tempFile != null) {
-            val outputOptions = OutputFileOptions.Builder(tempFile).setMetadata(metadata).build()
-
-            localImageCapture.takePicture(
-                outputOptions,
-                requireContext().mainExecutor(), // the executor, on which the task will run
-                object : OnImageSavedCallback {
-                    override fun onImageSaved(outputFileResults: OutputFileResults) {
-                        extractMetadata(tempFile)
-                    }
-
-                    override fun onError(exception: ImageCaptureException) {
-                        // This function is called if there is an errors during capture process
-                        val msg = "Photo capture failed: ${exception.message}"
-                        Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show()
-                        Log.e(TAG, msg)
-                        exception.printStackTrace()
-                    }
-                }
-            )
-        }
     }
 
     @Suppress("NON_EXHAUSTIVE_WHEN")
     private fun takePicture() = lifecycleScope.launch(Dispatchers.Main) {
         val localImageCapture = imageCapture ?: throw IllegalStateException("Camera initialization failed.")
-
-        val msg = "Short press the shutter button to read exposure"
-        showTimedDialog(requireContext(), msg)
 
         // Setup image capture metadata
         val metadata = Metadata().apply {
