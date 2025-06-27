@@ -32,7 +32,6 @@ import coil.request.ErrorResult
 import coil.request.ImageRequest
 import coil.transform.CircleCropTransformation
 import com.fbradasc.exposurefinder.R
-import com.fbradasc.exposurefinder.analyzer.LuminosityAnalyzer
 import com.fbradasc.exposurefinder.databinding.FragmentCameraBinding
 import com.fbradasc.exposurefinder.utils.*
 import kotlinx.coroutines.Dispatchers
@@ -59,6 +58,8 @@ import android.hardware.camera2.CaptureResult
 import android.hardware.camera2.TotalCaptureResult
 import android.os.Looper
 import android.util.Size
+import android.view.OrientationEventListener
+import android.view.Surface
 import androidx.annotation.OptIn
 import androidx.appcompat.app.AlertDialog
 import androidx.camera.core.ImageAnalysis
@@ -303,15 +304,16 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
                         if ((tv != null) && (sv != null) && (av != null)) {
                             val dtv = ( 1000000000 / tv.toDouble() ).toDouble()
                             val dav = av.toDouble()
-                            val lv = roundVal(calculateLv(dav, dtv, sv.toDouble()), 10.0)
+                            val dsv = sv.toDouble()
+                            val dlv = calculateLv(dav, dtv, dsv) // EV @ 100 ASA
+                            val rlv = roundVal(dlv, 10.0)
 
-                            if (exposure != lv) {
-                                exposure = lv
+                            if (exposure != rlv) {
+                                exposure = rlv
 
-                                val nsv = 400.0 // TODO: let the user chooses the film ISO
-                                var (nav, ntv) = convertTvAv(dav, dtv, sv.toDouble(), nsv)
-                                val ev = roundVal(calculateEv(nav, ntv), 10.0)
-                                val result: Pair<Double, Double>? = fitAvTvInRange(nav, ntv)
+                                val iso = 400.0 // TODO: let the user chooses the film speed
+                                var dev = getEvFromLv(dlv, iso) // LV @ iso ASA
+                                val result: Pair<Double, Double>? = fitEvInRange(dev)
 
                                 var stv="---"
                                 var sav="---"
@@ -328,10 +330,11 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
                                     sav = "${rav}"
                                 }
 
-                                val isv = nsv.toInt()
+                                val rev = roundVal(dev, 10.0)
+                                val isv = iso.toInt()
 
                                 binding.textExposure.text =
-                                    "${exposure}\n${ev}\n${isv}\n${stv}\n${sav}"
+                                    "${exposure}\n${rev}\n${isv}\n${stv}\n${sav}"
                             }
                         }
                     }
@@ -355,8 +358,9 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
     }
 
     private fun rotateBitmap(src: Bitmap, rotationDegrees: Float): Bitmap {
-        val matrix = Matrix()
-        matrix.postRotate(rotationDegrees, src.width / 2f, src.height / 2f)
+        val matrix = Matrix().apply {
+            postRotate(rotationDegrees, src.width / 2f, src.height / 2f)
+        }
         return Bitmap.createBitmap(src, 0, 0, src.width, src.height, matrix, true)
     }
 
@@ -384,9 +388,6 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
         yuvImage.compressToJpeg(android.graphics.Rect(0, 0, image.width, image.height), 100, out)
         val yuv = out.toByteArray()
 
-        val matrix = Matrix().apply {
-            postRotate(image.imageInfo.rotationDegrees.toFloat())
-        }
         return BitmapFactory.decodeByteArray(yuv, 0, yuv.size)
     }
 
@@ -596,11 +597,22 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
         val analyzerThread = HandlerThread("LuminosityAnalysis").apply { start() }
         imageAnalysis.setAnalyzer(
             ThreadExecutor(Handler(analyzerThread.looper)),
-            // LuminosityAnalyzer()
             { imageProxy ->
                 val bitmap = yuvToBitmap(imageProxy)
-                val filteredAndRotated = rotateBitmap(applyFilters(bitmap),
+                val filtered = applyFilters(bitmap)
+                val filteredAndRotated = rotateBitmap(filtered,
                     imageProxy.imageInfo.rotationDegrees.toFloat())
+
+                Log.d(TAG, "rotationDegrees: ${imageProxy.imageInfo.rotationDegrees.toFloat()}" +
+                           ", i.w=${imageProxy.width}" +
+                           ", i.h=${imageProxy.height}" +
+                           ", b.w=${bitmap.width}" +
+                           ", b.h=${bitmap.height}" +
+                           ", f.w=${filtered.width}" +
+                           ", f.h=${filtered.height}" +
+                           ", r.w=${filteredAndRotated.width}" +
+                           ", r.h=${filteredAndRotated.height}")
+
                 imageProxy.close()
                 binding.filterViewFinder.post {
                     binding.filterViewFinder.setImageBitmap(filteredAndRotated)
@@ -672,10 +684,8 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
     fun findAvTvPair(
         allowedAvs: List<Double>,
         allowedTvs: List<Double>,
-        avi: Double,
-        tvi: Double,
+        targetEv  : Double,
     ): Pair<Double, Double>? {
-        val targetEv = calculateEv(avi, tvi)
         var closestPair: Pair<Double, Double>? = null
         var minDiff = Double.MAX_VALUE
         for (av in allowedAvs) {
@@ -686,23 +696,30 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
                     minDiff = diff
                     closestPair = Pair(av, tv)
                 }
-                if (diff == 0.0) return Pair(av, tv)
             }
         }
         return closestPair
     }
 
-    private fun fitAvTvInRange(av: Double, tv: Double): Pair<Double, Double>? {
+    private fun fitEvInRange(ev: Double): Pair<Double, Double>? {
         val allowedAvs = listOf<Double>(/*1.4, 2.8,*/ 3.5, 4.0, 5.6, 8.0, 11.0, 16.0, 22.0)
         val allowedTvs = listOf<Double>(/*1000.0,*/ 500.0, 250.0, 125.0, 60.0, 30.0, 15.0, 8.0, 4.0, 2.0, 1.0, 0.5, 0.25)
-        return findAvTvPair(allowedAvs, allowedTvs, av, tv)
+        return findAvTvPair(allowedAvs, allowedTvs, ev)
     }
 
-    private fun convertTvAv(av1: Double, tv1: Double, iso1: Double, iso2: Double): Pair<Double, Double> {
+    private fun convertAvTv(av1: Double, tv1: Double, iso1: Double, iso2: Double): Pair<Double, Double> {
         val delta = ln(iso2 / iso1) / ln(2.0)
         val av2 = av1
         val tv2 = 2.0.pow( ( ln(tv1) / ln(2.0) ) + delta )
         return Pair(av2, tv2)
+    }
+
+    private fun getLvFromEv(ev: Double, iso: Double): Double {
+        return ev - ( ln( iso / 100.0 ) / ln( 2.0 ) )
+    }
+
+    private fun getEvFromLv(lv: Double, iso: Double): Double {
+        return lv + ( ln( iso / 100.0 ) / ln( 2.0 ) )
     }
 
     private fun calculateEv(av: Double, tv: Double): Double {
@@ -711,9 +728,7 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
 
     private fun calculateLv(av: Double, tv: Double, sv: Double): Double {
         // 4.3(100) = 1.8 @ 1/60
-        val ev = calculateEv(av, tv)
-        val dv = ( ln ( sv / 100.0 ) / ln( 2.0 ) )
-        return ev - dv
+        return getLvFromEv(calculateEv(av,tv), sv)
     }
 
     @Suppress("NON_EXHAUSTIVE_WHEN")
