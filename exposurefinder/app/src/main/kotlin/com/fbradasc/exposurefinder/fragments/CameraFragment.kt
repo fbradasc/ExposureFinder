@@ -540,6 +540,7 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
             ExifInterface.TAG_IMAGE_WIDTH,
             ExifInterface.TAG_INTEROPERABILITY_INDEX,
             ExifInterface.TAG_ISO_SPEED_RATINGS,
+            ExifInterface.TAG_PHOTOGRAPHIC_SENSITIVITY,
             ExifInterface.TAG_JPEG_INTERCHANGE_FORMAT,
             ExifInterface.TAG_JPEG_INTERCHANGE_FORMAT_LENGTH,
             ExifInterface.TAG_LIGHT_SOURCE,
@@ -856,7 +857,7 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
     }
 
     companion object {
-        private const val TAG = "CameraXDemo"
+        public const val TAG = "CameraXDemo"
 
         const val KEY_GRID = "sPrefGridCamera"
 
@@ -866,5 +867,23 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
         private var contrast: Float = 1.0f
 
         private var exposure: Double = 0.0
+
+        public fun showSimpleDialog(context: Context, message: String) {
+            AlertDialog.Builder(context)
+                .setMessage(message)
+                .setPositiveButton("OK") { dialog, _ -> dialog.dismiss() }
+                .show()
+        }
+
+        public fun showTimedDialog(context: Context, message: String, durationMs: Long = 2000) {
+            val dialog = AlertDialog.Builder(context)
+                .setMessage(message)
+                .setCancelable(false)
+                .create()
+            dialog.show()
+            Handler(Looper.getMainLooper()).postDelayed({
+                dialog.dismiss()
+            }, durationMs)
+        }
     }
 }

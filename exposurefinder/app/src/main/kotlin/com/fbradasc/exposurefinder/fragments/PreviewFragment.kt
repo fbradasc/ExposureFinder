@@ -2,12 +2,16 @@ package com.fbradasc.exposurefinder.fragments
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.View
+import android.widget.Toast
 import androidx.core.view.WindowInsetsCompat
+import androidx.exifinterface.media.ExifInterface
 import androidx.navigation.Navigation
 import com.fbradasc.exposurefinder.R
 import com.fbradasc.exposurefinder.adapter.MediaAdapter
 import com.fbradasc.exposurefinder.databinding.FragmentPreviewBinding
+import com.fbradasc.exposurefinder.fragments.CameraFragment.Companion.TAG
 import com.fbradasc.exposurefinder.utils.*
 
 class PreviewFragment : BaseFragment<FragmentPreviewBinding>(R.layout.fragment_preview) {
@@ -15,6 +19,19 @@ class PreviewFragment : BaseFragment<FragmentPreviewBinding>(R.layout.fragment_p
         onItemClick = { uri ->
             val visibility = if (binding.groupPreviewActions.visibility == View.VISIBLE) View.GONE else View.VISIBLE
             binding.groupPreviewActions.visibility = visibility
+            try {
+                val inputStream = requireContext().contentResolver.openInputStream(uri)
+                val exif = ExifInterface(inputStream!!);
+                val tv  = exif.getAttribute(ExifInterface.TAG_EXPOSURE_TIME)
+                val av  = exif.getAttribute(ExifInterface.TAG_F_NUMBER)
+                val sv1 = exif.getAttribute(ExifInterface.TAG_ISO_SPEED_RATINGS)
+                val sv2 = exif.getAttribute(ExifInterface.TAG_PHOTOGRAPHIC_SENSITIVITY)
+
+                val msg = "TV: ${tv}\nAV: ${av}\nISO: ${sv1}\nISO ALT: ${sv2}"
+                CameraFragment.showSimpleDialog(requireContext(), msg)
+            } catch (e: Exception) {
+              Log.e(CameraFragment.TAG, "Failed to read EXIF data", e)
+            }
         },
         onDeleteClick = { isEmpty, uri ->
             if (isEmpty) onBackPressed()
