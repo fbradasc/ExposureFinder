@@ -365,25 +365,74 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
     }
 
     private fun yuvToBitmap(image: ImageProxy): Bitmap {
-        val yBuffer = image.planes[0].buffer
-        val uBuffer = image.planes[1].buffer
-        val vBuffer = image.planes[2].buffer
+        // Conversion algorithm from https://stackoverflow.com/a/45926852 - Start
+        //
+        val crop = image.cropRect
+        val format = image.format
+        val width = crop.width()
+        val height = crop.height()
+        val planes = image.planes
+        val n21Data = ByteArray(width*height*ImageFormat.getBitsPerPixel(format) / 8)
+        val rowData = ByteArray(planes[0].rowStride)
 
-        val ySize = yBuffer.remaining()
-        val uSize = uBuffer.remaining()
-        val vSize = vBuffer.remaining()
+        var cnlOffset = 0
+        var outStride = 1
+        for (i in planes.indices) {
+            when(i) {
+                0 -> {
+                    cnlOffset = 0
+                    outStride = 1
+                }
+                1 -> {
+                    cnlOffset = width * height + 1
+                    outStride = 2
+                }
+                2 -> {
+                    cnlOffset = width*height
+                    outStride = 2
+                }
+            }
 
-        val nv21 = ByteArray(ySize + uSize + vSize)
-        yBuffer.get(nv21, 0, ySize)
-        vBuffer.get(nv21, ySize, vSize)
-        uBuffer.get(nv21, ySize + vSize, uSize)
+            val buffer = image.planes[i].buffer
+            val rowStride = image.planes[i].rowStride
+            val pxlStride = image.planes[i].pixelStride
+
+            val shift = if (i == 0) { 0 } else { 1 }
+
+            val w = width.shr(shift)
+            val h = height.shr(shift)
+
+            buffer.position(rowStride*crop.top.shr(shift)+pxlStride*crop.left.shr(shift))
+
+            for (row in 0..h-1) {
+                var length = 0
+                if (pxlStride==1 && outStride==1) {
+                    length = w
+                    buffer.get(n21Data, cnlOffset, length)
+                    cnlOffset += length
+                } else {
+                    length = (w - 1)*pxlStride + 1
+                    buffer.get(rowData, 0, length)
+                    for (col in 0..w-1) {
+                        n21Data[cnlOffset] = rowData[col * pxlStride]
+                        cnlOffset += outStride
+                    }
+                }
+                if (row < h - 1) {
+                    buffer.position(buffer.position() + rowStride - length)
+                }
+            }
+        }
+        //
+        // Conversion algorithm from https://stackoverflow.com/a/45926852 - END
 
         val yuvImage = android.graphics.YuvImage(
-            nv21,
+            n21Data,
             ImageFormat.NV21,
             image.width, image.height,
             null
         )
+
         val out = ByteArrayOutputStream()
         yuvImage.compressToJpeg(android.graphics.Rect(0, 0, image.width, image.height), 100, out)
         val yuv = out.toByteArray()
@@ -602,16 +651,6 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
                 val filtered = applyFilters(bitmap)
                 val filteredAndRotated = rotateBitmap(filtered,
                     imageProxy.imageInfo.rotationDegrees.toFloat())
-
-                Log.d(TAG, "rotationDegrees: ${imageProxy.imageInfo.rotationDegrees.toFloat()}" +
-                           ", i.w=${imageProxy.width}" +
-                           ", i.h=${imageProxy.height}" +
-                           ", b.w=${bitmap.width}" +
-                           ", b.h=${bitmap.height}" +
-                           ", f.w=${filtered.width}" +
-                           ", f.h=${filtered.height}" +
-                           ", r.w=${filteredAndRotated.width}" +
-                           ", r.h=${filteredAndRotated.height}")
 
                 imageProxy.close()
                 binding.filterViewFinder.post {
