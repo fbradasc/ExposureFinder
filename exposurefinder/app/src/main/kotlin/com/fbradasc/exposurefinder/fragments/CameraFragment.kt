@@ -397,14 +397,14 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
             val rowStride = image.planes[i].rowStride
             val pxlStride = image.planes[i].pixelStride
 
-            val shift = if (i == 0) { 0 } else { 1 }
+            val shift = if (i == 0) 0 else 1
 
             val w = width.shr(shift)
             val h = height.shr(shift)
 
             buffer.position(rowStride*crop.top.shr(shift)+pxlStride*crop.left.shr(shift))
 
-            for (row in 0..h-1) {
+            for (row in 0..<h) {
                 var length = 0
                 if (pxlStride==1 && outStride==1) {
                     length = w
@@ -413,7 +413,7 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
                 } else {
                     length = (w - 1)*pxlStride + 1
                     buffer.get(rowData, 0, length)
-                    for (col in 0..w-1) {
+                    for (col in 0..<w) {
                         n21Data[cnlOffset] = rowData[col * pxlStride]
                         cnlOffset += outStride
                     }
