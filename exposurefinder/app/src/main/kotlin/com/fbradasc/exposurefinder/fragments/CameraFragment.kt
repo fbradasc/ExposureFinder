@@ -239,10 +239,6 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
             ?: binding.btnGallery.setImageResource(R.drawable.ic_no_picture) // or the default placeholder
     }
 
-    private fun roundVal(v: Double, r: Double): Double {
-        return ( v * r.toInt() ).roundToInt() / r
-    }
-
     /**
      * Unbinds all the lifecycles from CameraX, then creates new with new parameters
      * */
@@ -311,8 +307,7 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
                             if (exposure != rlv) {
                                 exposure = rlv
 
-                                val iso = 400.0 // TODO: let the user chooses the film speed
-                                var dev = getEvFromLv(dlv, iso) // LV @ iso ASA
+                                var dev = getEvFromLv(dlv, user_iso) // LV @ iso ASA
                                 val result: Pair<Double, Double>? = fitEvInRange(dev)
 
                                 var stv="---"
@@ -331,7 +326,7 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
                                 }
 
                                 val rev = roundVal(dev, 10.0)
-                                val isv = iso.toInt()
+                                val isv = user_iso.toInt()
 
                                 binding.textExposure.text =
                                     "${exposure}\n${rev}\n${isv}\n${stv}\n${sav}"
@@ -721,56 +716,6 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
         }
     }
 
-    fun findAvTvPair(
-        allowedAvs: List<Double>,
-        allowedTvs: List<Double>,
-        targetEv  : Double,
-    ): Pair<Double, Double>? {
-        var closestPair: Pair<Double, Double>? = null
-        var minDiff = Double.MAX_VALUE
-        for (av in allowedAvs) {
-            for (tv in allowedTvs) {
-                val ev = calculateEv(av, tv)
-                val diff = kotlin.math.abs(ev - targetEv)
-                if (diff < minDiff) {
-                    minDiff = diff
-                    closestPair = Pair(av, tv)
-                }
-            }
-        }
-        return closestPair
-    }
-
-    private fun fitEvInRange(ev: Double): Pair<Double, Double>? {
-        val allowedAvs = listOf<Double>(/*1.4, 2.8,*/ 3.5, 4.0, 5.6, 8.0, 11.0, 16.0, 22.0)
-        val allowedTvs = listOf<Double>(/*1000.0,*/ 500.0, 250.0, 125.0, 60.0, 30.0, 15.0, 8.0, 4.0, 2.0, 1.0, 0.5, 0.25)
-        return findAvTvPair(allowedAvs, allowedTvs, ev)
-    }
-
-    private fun convertAvTv(av1: Double, tv1: Double, iso1: Double, iso2: Double): Pair<Double, Double> {
-        val delta = ln(iso2 / iso1) / ln(2.0)
-        val av2 = av1
-        val tv2 = 2.0.pow( ( ln(tv1) / ln(2.0) ) + delta )
-        return Pair(av2, tv2)
-    }
-
-    private fun getLvFromEv(ev: Double, iso: Double): Double {
-        return ev - ( ln( iso / 100.0 ) / ln( 2.0 ) )
-    }
-
-    private fun getEvFromLv(lv: Double, iso: Double): Double {
-        return lv + ( ln( iso / 100.0 ) / ln( 2.0 ) )
-    }
-
-    private fun calculateEv(av: Double, tv: Double): Double {
-        return ( ln( ( av * av ) * tv ) / ln( 2.0 ) )
-    }
-
-    private fun calculateLv(av: Double, tv: Double, sv: Double): Double {
-        // 4.3(100) = 1.8 @ 1/60
-        return getLvFromEv(calculateEv(av,tv), sv)
-    }
-
     @Suppress("NON_EXHAUSTIVE_WHEN")
     private fun takePicture() = lifecycleScope.launch(Dispatchers.Main) {
         val localImageCapture = imageCapture ?: throw IllegalStateException("Camera initialization failed.")
@@ -868,6 +813,8 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
 
         private var exposure: Double = 0.0
 
+        public var user_iso: Double = 400.0
+
         public fun showSimpleDialog(context: Context, message: String) {
             AlertDialog.Builder(context)
                 .setMessage(message)
@@ -884,6 +831,60 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
             Handler(Looper.getMainLooper()).postDelayed({
                 dialog.dismiss()
             }, durationMs)
+        }
+
+       private fun findAvTvPair(
+            allowedAvs: List<Double>,
+            allowedTvs: List<Double>,
+            targetEv  : Double,
+        ): Pair<Double, Double>? {
+            var closestPair: Pair<Double, Double>? = null
+            var minDiff = Double.MAX_VALUE
+            for (av in allowedAvs) {
+                for (tv in allowedTvs) {
+                    val ev = calculateEv(av, tv)
+                    val diff = kotlin.math.abs(ev - targetEv)
+                    if (diff < minDiff) {
+                        minDiff = diff
+                        closestPair = Pair(av, tv)
+                    }
+                }
+            }
+            return closestPair
+        }
+
+        public fun fitEvInRange(ev: Double): Pair<Double, Double>? {
+            val allowedAvs = listOf<Double>(/*1.4, 2.8,*/ 3.5, 4.0, 5.6, 8.0, 11.0, 16.0, 22.0)
+            val allowedTvs = listOf<Double>(/*1000.0,*/ 500.0, 250.0, 125.0, 60.0, 30.0, 15.0, 8.0, 4.0, 2.0, 1.0, 0.5, 0.25)
+            return findAvTvPair(allowedAvs, allowedTvs, ev)
+        }
+
+        private fun convertAvTv(av1: Double, tv1: Double, iso1: Double, iso2: Double): Pair<Double, Double> {
+            val delta = ln(iso2 / iso1) / ln(2.0)
+            val av2 = av1
+            val tv2 = 2.0.pow( ( ln(tv1) / ln(2.0) ) + delta )
+            return Pair(av2, tv2)
+        }
+
+        private fun getLvFromEv(ev: Double, iso: Double): Double {
+            return ev - ( ln( iso / 100.0 ) / ln( 2.0 ) )
+        }
+
+        public fun getEvFromLv(lv: Double, iso: Double): Double {
+            return lv + ( ln( iso / 100.0 ) / ln( 2.0 ) )
+        }
+
+        private fun calculateEv(av: Double, tv: Double): Double {
+            return ( ln( ( av * av ) * tv ) / ln( 2.0 ) )
+        }
+
+        public fun calculateLv(av: Double, tv: Double, sv: Double): Double {
+            // 4.3(100) = 1.8 @ 1/60
+            return getLvFromEv(calculateEv(av,tv), sv)
+        }
+
+        public fun roundVal(v: Double, r: Double): Double {
+            return ( v * r.toInt() ).roundToInt() / r
         }
     }
 }

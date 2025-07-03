@@ -12,6 +12,9 @@ import com.fbradasc.exposurefinder.R
 import com.fbradasc.exposurefinder.adapter.MediaAdapter
 import com.fbradasc.exposurefinder.databinding.FragmentPreviewBinding
 import com.fbradasc.exposurefinder.fragments.CameraFragment.Companion.TAG
+import com.fbradasc.exposurefinder.fragments.CameraFragment.Companion.calculateLv
+import com.fbradasc.exposurefinder.fragments.CameraFragment.Companion.fitEvInRange
+import com.fbradasc.exposurefinder.fragments.CameraFragment.Companion.getEvFromLv
 import com.fbradasc.exposurefinder.utils.*
 
 class PreviewFragment : BaseFragment<FragmentPreviewBinding>(R.layout.fragment_preview) {
@@ -19,16 +22,48 @@ class PreviewFragment : BaseFragment<FragmentPreviewBinding>(R.layout.fragment_p
         onItemClick = { uri ->
             val visibility = if (binding.groupPreviewActions.visibility == View.VISIBLE) View.GONE else View.VISIBLE
             binding.groupPreviewActions.visibility = visibility
-            try {
+
+            if (visibility == View.GONE) try {
                 val inputStream = requireContext().contentResolver.openInputStream(uri)
                 val exif = ExifInterface(inputStream!!);
-                val tv  = exif.getAttribute(ExifInterface.TAG_EXPOSURE_TIME)
-                val av  = exif.getAttribute(ExifInterface.TAG_F_NUMBER)
-                val sv1 = exif.getAttribute(ExifInterface.TAG_ISO_SPEED_RATINGS)
-                val sv2 = exif.getAttribute(ExifInterface.TAG_PHOTOGRAPHIC_SENSITIVITY)
+                val tv = exif.getAttribute(ExifInterface.TAG_EXPOSURE_TIME)
+                val av = exif.getAttribute(ExifInterface.TAG_F_NUMBER)
+                val sv = exif.getAttribute(ExifInterface.TAG_PHOTOGRAPHIC_SENSITIVITY)
 
-                val msg = "TV: ${tv}\nAV: ${av}\nISO: ${sv1}\nISO ALT: ${sv2}"
-                CameraFragment.showSimpleDialog(requireContext(), msg)
+                if ((tv != null) && (sv != null) && (av != null)) {
+                    val dtv = ( 1.0 / tv.toDouble() ).toDouble()
+                    val dav = av.toDouble()
+                    val dsv = sv.toDouble()
+                    val dlv = CameraFragment.calculateLv(dav, dtv, dsv) // EV @ 100 ASA
+                    val rlv = CameraFragment.roundVal(dlv, 10.0)
+
+                    var dev = CameraFragment.getEvFromLv(dlv, CameraFragment.user_iso) // LV @ user_iso ASA
+                    val result: Pair<Double, Double>? = CameraFragment.fitEvInRange(dev)
+
+                    var stv="---"
+                    var sav="---"
+
+                    if (result != null) {
+                        stv = if (result.second > 1.0) {
+                            val itv = result.second.toInt()
+                            "1/${itv}"
+                        } else {
+                            val itv = (1.0 / result.second).toInt()
+                            "${itv}"
+                        }
+                        val rav = CameraFragment.roundVal(result.first.toDouble(), 10.0)
+                        sav = "${rav}"
+                    }
+
+                    val rev = CameraFragment.roundVal(dev, 10.0)
+                    val isv = CameraFragment.user_iso.toInt()
+
+                    val msg = "LV: ${rlv} -> EV: ${rev} @ ${isv} ASA\n\n" +
+                              " - TV: ${stv}\n" +
+                              " - AV: ${sav}"
+
+                    CameraFragment.showSimpleDialog(requireContext(), msg)
+                }
             } catch (e: Exception) {
               Log.e(CameraFragment.TAG, "Failed to read EXIF data", e)
             }
