@@ -233,12 +233,13 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center"
             android:layout_margin="@dimen/double_margin"
-            android:background="@drawable/bg_options"
             android:paddingHorizontal="@dimen/fab_margin"
-            android:paddingVertical="@dimen/double_margin"
+            android:paddingVertical="@dimen/double_margin" />
+        <!--
+            android:background="@drawable/bg_options"
             android:progressBackgroundTint="@android:color/white"
             app:haloColor="@color/colorAccent"
-            app:thumbColor="@color/colorAccent" />
+            app:thumbColor="@color/colorAccent" /-->
     </FrameLayout>
 
     <FrameLayout
@@ -260,11 +261,11 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center"
             android:layout_margin="@dimen/double_margin"
-            android:background="@drawable/bg_options"
             android:paddingHorizontal="@dimen/fab_margin"
-            android:paddingVertical="@dimen/double_margin"
-            android:progressBackgroundTint="@android:color/white"
+            android:paddingVertical="@dimen/double_margin" />
+            <!-- android:progressBackgroundTint="@android:color/white"
+            android:background="@drawable/bg_options"
             app:haloColor="@color/colorAccent"
-            app:thumbColor="@color/colorAccent" />
+            app:thumbColor="@color/colorAccent" / -->
     </FrameLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>

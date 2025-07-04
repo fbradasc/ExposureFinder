@@ -5,7 +5,106 @@
     <string name="label_ok">OK</string>
 
     <!-- TODO: Remove or change this placeholder text -->
-    <string name="hello_blank_fragment">Hello blank fragment</string>
     <string name="cd_take_picture">Take picture</string>
     <string name="cb_open_gallery">Navigate to Gallery</string>
+    <string name="film_speed_title">Film speed ASA/DIN°</string>
+    <string name="filter_title">Filter</string>
+
+    <string-array name="film_speed_labels">
+        <item>16 / 13°</item>
+        <item>20 / 14°</item>
+        <item>25 / 15°</item>
+        <item>32 / 16°</item>
+        <item>40 / 17°</item>
+        <item>50 / 18°</item>
+        <item>64 / 19°</item>
+        <item>80 / 20°</item>
+        <item>100 / 21°</item>
+        <item>125 / 22°</item>
+        <item>160 / 23°</item>
+        <item>200 / 24°</item>
+        <item>250 / 25°</item>
+        <item>320 / 26°</item>
+        <item>400 / 27°</item>
+        <item>500 / 28°</item>
+        <item>640 / 29°</item>
+        <item>800 / 30°</item>
+        <item>1000 / 31°</item>
+        <item>1250 / 32°</item>
+        <item>1600 / 33°</item>
+        <item>2000 / 34°</item>
+        <item>2500 / 35°</item>
+        <item>3200 / 36°</item>
+    </string-array>
+
+    <string-array name="film_speed_values">
+        <item>16</item>
+        <item>20</item>
+        <item>25</item>
+        <item>32</item>
+        <item>40</item>
+        <item>50</item>
+        <item>64</item>
+        <item>80</item>
+        <item>100</item>
+        <item>125</item>
+        <item>160</item>
+        <item>200</item>
+        <item>250</item>
+        <item>320</item>
+        <item>400</item>
+        <item>500</item>
+        <item>640</item>
+        <item>800</item>
+        <item>1000</item>
+        <item>1250</item>
+        <item>1600</item>
+        <item>2000</item>
+        <item>2500</item>
+        <item>3200</item>
+    </string-array>
+
+    <string-array name="filter_labels">
+        <item>---</item>
+        <item>Light Yellow (-1)</item>
+        <item>Medium Yellow (-1.5)</item>
+        <item>Sport (-1)</item>
+        <item>Light Green (-1)</item>
+        <item>Green (-1.5)</item>
+        <item>Light Orange (-1.5)</item>
+        <item>Orange (-2)</item>
+        <item>Medium Orange (-2.5)</item>
+        <item>Dark Orange (-3)</item>
+        <item>Light Red (-2)</item>
+        <item>Red (-2.5)</item>
+        <item>Medium Red (-3)</item>
+        <item>Dark Red (-3.5)</item>
+        <item>Light Blue (-0.5)</item>
+        <item>Grey 2 (-2)</item>
+        <item>Grey 4 (-4)</item>
+        <item>Ultra-Violet (-0.5)</item>
+        <item>H1 (-0.5)</item>
+    </string-array>
+
+    <string-array name="filter_values">
+        <item>---:0</item>
+        <item>Light Yellow:-1</item>
+        <item>Medium Yellow:-1.5</item>
+        <item>Sport:-1</item>
+        <item>Light Green:-1</item>
+        <item>Green:-1.5</item>
+        <item>Light Orange:-1.5</item>
+        <item>Orange:-2</item>
+        <item>Medium Orange:-2.5</item>
+        <item>Dark Orange:-3</item>
+        <item>Light Red:-2</item>
+        <item>Red:-2.5</item>
+        <item>Medium Red:-3</item>
+        <item>Dark Red:-3.5</item>
+        <item>Light Blue:-0.5</item>
+        <item>Grey 2:-2</item>
+        <item>Grey 4:-4</item>
+        <item>Ultra-Violet:-0.5</item>
+        <item>H1:-0.5</item>
+    </string-array>
 </resources>

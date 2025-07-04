@@ -53,4 +53,5 @@ dependencies {
     implementation(libs.coil)
     implementation(libs.coil.video)
     implementation(libs.androidx.exifinterface)
+    implementation(libs.androidx.preference)
 }

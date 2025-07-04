@@ -13,10 +13,18 @@
         <action
             android:id="@+id/action_camera_to_preview"
             app:destination="@id/previewFragment"
-            app:enterAnim="@anim/slide_in"
-            app:exitAnim="@anim/slide_out"
-            app:popEnterAnim="@anim/slide_in_pop"
-            app:popExitAnim="@anim/slide_out_pop"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_right"
+            app:popEnterAnim="@anim/slide_in_right_pop"
+            app:popExitAnim="@anim/slide_out_right_pop"
+            app:popUpTo="@+id/cameraFragment" />
+        <action
+            android:id="@+id/action_camera_to_settings"
+            app:destination="@id/settingsFragment"
+            app:enterAnim="@anim/slide_in_left"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left_pop"
+            app:popExitAnim="@anim/slide_out_left_pop"
             app:popUpTo="@+id/cameraFragment" />
     </fragment>
     <fragment
@@ -24,4 +32,9 @@
         android:name="com.fbradasc.exposurefinder.fragments.PreviewFragment"
         android:label="fragment_preview"
         tools:layout="@layout/fragment_preview" />
+    <fragment
+        android:id="@+id/settingsFragment"
+        android:name="com.fbradasc.exposurefinder.fragments.PreferencesFragment"
+        android:label="fragment_settings"
+        tools:layout="@layout/fragment_preferences" />
 </navigation>

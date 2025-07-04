@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <ListPreference
+        android:defaultValue="400"
+        android:entries="@array/film_speed_labels"
+        android:entryValues="@array/film_speed_values"
+        android:key="film_speed"
+        android:title="@string/film_speed_title"
+        app:persistent="true"
+        app:useSimpleSummaryProvider="true" />
+    <ListPreference
+        android:defaultValue="0:0"
+        android:entries="@array/filter_labels"
+        android:entryValues="@array/filter_values"
+        android:key="filter"
+        android:title="@string/filter_title"
+        app:persistent="true"
+        app:useSimpleSummaryProvider="true" />
+</PreferenceScreen>

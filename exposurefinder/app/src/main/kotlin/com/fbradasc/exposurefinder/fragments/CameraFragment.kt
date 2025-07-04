@@ -135,6 +135,7 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
             })
 
             btnTakePicture.setOnClickListener { takePicture() }
+            bpExposure.setOnClickListener { openSettings() }
             btnGallery.setOnClickListener { openPreview() }
             btnGrid.setOnClickListener { toggleGrid() }
             btnExposure.setOnClickListener { flExposure.visibility = View.VISIBLE }
@@ -192,6 +193,13 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
         binding.btnGrid.onWindowInsets { view, windowInsets ->
             view.topMargin = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars()).top
         }
+    }
+
+    /**
+     * Navigate to SettingsFragment
+     * */
+    private fun openSettings() {
+        view?.let { Navigation.findNavController(it).navigate(R.id.action_camera_to_settings) }
     }
 
     /**
@@ -816,14 +824,14 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
         public var user_iso: Double = 400.0
 
         public fun showSimpleDialog(context: Context, message: String) {
-            AlertDialog.Builder(context)
+            AlertDialog.Builder(context, R.style.AppTheme_Dialog)
                 .setMessage(message)
                 .setPositiveButton("OK") { dialog, _ -> dialog.dismiss() }
                 .show()
         }
 
         public fun showTimedDialog(context: Context, message: String, durationMs: Long = 2000) {
-            val dialog = AlertDialog.Builder(context)
+            val dialog = AlertDialog.Builder(context, R.style.AppTheme_Dialog)
                 .setMessage(message)
                 .setCancelable(false)
                 .create()
