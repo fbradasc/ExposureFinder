@@ -122,9 +122,37 @@
         android:padding="@dimen/half_margin"
         android:scaleType="centerInside"
         android:src="@drawable/ic_grid_off"
-        app:layout_constraintBottom_toTopOf="@+id/btnContrast"
+        app:layout_constraintBottom_toTopOf="@+id/btnSpeed"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
+        tools:ignore="ContentDescription" />
+
+    <ImageButton
+        android:id="@+id/btnSpeed"
+        android:layout_width="@dimen/button_size_small"
+        android:layout_height="@dimen/button_size_small"
+        android:background="@android:color/transparent"
+        android:elevation="1dp"
+        android:padding="@dimen/half_margin"
+        android:scaleType="centerInside"
+        android:src="@drawable/ic_film_speed"
+        app:layout_constraintBottom_toTopOf="@+id/btnFilter"
+        app:layout_constraintStart_toStartOf="@id/btnGrid"
+        app:layout_constraintTop_toBottomOf="@+id/btnGrid"
+        tools:ignore="ContentDescription" />
+
+    <ImageButton
+        android:id="@+id/btnFilter"
+        android:layout_width="@dimen/button_size_small"
+        android:layout_height="@dimen/button_size_small"
+        android:background="@android:color/transparent"
+        android:elevation="1dp"
+        android:padding="@dimen/half_margin"
+        android:scaleType="centerInside"
+        android:src="@drawable/ic_filter"
+        app:layout_constraintBottom_toTopOf="@+id/btnContrast"
+        app:layout_constraintStart_toStartOf="@id/btnGrid"
+        app:layout_constraintTop_toBottomOf="@+id/btnSpeed"
         tools:ignore="ContentDescription" />
 
     <ImageButton
@@ -138,7 +166,7 @@
         android:src="@drawable/ic_contrast"
         app:layout_constraintBottom_toTopOf="@+id/btnExposure"
         app:layout_constraintStart_toStartOf="@id/btnGrid"
-        app:layout_constraintTop_toBottomOf="@+id/btnGrid"
+        app:layout_constraintTop_toBottomOf="@+id/btnFilter"
         tools:ignore="ContentDescription" />
 
     <ImageButton
@@ -223,8 +251,8 @@
         android:padding="@dimen/double_margin"
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/viewBg0"
+        app:layout_constraintStart_toEndOf="@id/viewBg2"
         app:layout_constraintTop_toTopOf="parent">
 
         <com.google.android.material.slider.Slider
@@ -251,8 +279,8 @@
         android:padding="@dimen/double_margin"
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/viewBg0"
+        app:layout_constraintStart_toEndOf="@id/viewBg2"
         app:layout_constraintTop_toTopOf="parent">
 
         <com.google.android.material.slider.Slider
@@ -263,9 +291,57 @@
             android:layout_margin="@dimen/double_margin"
             android:paddingHorizontal="@dimen/fab_margin"
             android:paddingVertical="@dimen/double_margin" />
-            <!-- android:progressBackgroundTint="@android:color/white"
+        <!-- android:progressBackgroundTint="@android:color/white"
             android:background="@drawable/bg_options"
             app:haloColor="@color/colorAccent"
             app:thumbColor="@color/colorAccent" / -->
+    </FrameLayout>
+
+    <FrameLayout
+        android:id="@+id/flSpeed"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:elevation="3dp"
+        android:orientation="horizontal"
+        android:padding="@dimen/double_margin"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/viewBg0"
+        app:layout_constraintStart_toEndOf="@id/viewBg2"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvSpeed"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_margin="@dimen/double_margin"
+            android:orientation="horizontal"
+            android:paddingHorizontal="@dimen/fab_margin"
+            android:paddingVertical="@dimen/double_margin" />
+    </FrameLayout>
+
+    <FrameLayout
+        android:id="@+id/flFilter"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:elevation="3dp"
+        android:orientation="horizontal"
+        android:padding="@dimen/double_margin"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/viewBg0"
+        app:layout_constraintStart_toEndOf="@id/viewBg2"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvFilter"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_margin="@dimen/double_margin"
+            android:orientation="horizontal"
+            android:paddingHorizontal="@dimen/fab_margin"
+            android:paddingVertical="@dimen/double_margin" />
     </FrameLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -21,6 +21,7 @@ navigation = "2.8.9"
 preference = "1.2.1"
 viewpager2 = "1.1.0"
 exifinterface = "1.4.1"
+recyclerview = "1.4.0"
 
 [libraries]
 androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompat" }
@@ -56,6 +57,7 @@ activity-compose = { group = "androidx.activity", name = "activity-compose", ver
 compose-paging = { group = "androidx.paging", name = "paging-compose", version.ref = "composePaging" }
 compose-coil = { group = "io.coil-kt", name = "coil-compose", version.ref = "composeCoil" }
 androidx-exifinterface = { group = "androidx.exifinterface", name = "exifinterface", version.ref = "exifinterface" }
+androidx-recyclerview = { group = "androidx.recyclerview", name = "recyclerview", version.ref = "recyclerview" }
 
 [bundles]
 firebase = ["firebase-analytics-ktx", "firebase-crashlytics-ktx", "firebase-firestore-ktx"]

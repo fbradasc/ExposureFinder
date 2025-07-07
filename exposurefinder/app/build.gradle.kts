@@ -54,4 +54,5 @@ dependencies {
     implementation(libs.coil.video)
     implementation(libs.androidx.exifinterface)
     implementation(libs.androidx.preference)
+    implementation(libs.androidx.recyclerview)
 }

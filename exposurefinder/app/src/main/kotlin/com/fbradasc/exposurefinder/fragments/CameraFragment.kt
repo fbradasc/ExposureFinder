@@ -72,7 +72,9 @@ import kotlin.math.pow
 
 import androidx.camera.camera2.interop.Camera2Interop
 import androidx.camera.camera2.interop.ExperimentalCamera2Interop
+import androidx.recyclerview.widget.LinearLayoutManager
 import kotlin.math.roundToInt
+import com.fbradasc.exposurefinder.utils.RecyclerAdapter
 
 class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_camera) {
     // An instance for display manager to get display change callbacks
@@ -134,6 +136,59 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
                     displayManager.unregisterDisplayListener(displayListener)
             })
 
+            val speedLabels = arrayOf("16 / 13°",
+                "20\n14°",
+                "25\n15°",
+                "32\n16°",
+                "40\n17°",
+                "50\n18°",
+                "64\n19°",
+                "80\n20°",
+                "100\n21°",
+                "125\n22°",
+                "160\n23°",
+                "200\n24°",
+                "250\n25°",
+                "320\n26°",
+                "400\n27°",
+                "500\n28°",
+                "640\n29°",
+                "800\n30°",
+                "1000\n31°",
+                "1250\n32°",
+                "1600\n33°",
+                "2000\n34°",
+                "2500\n35°",
+                "3200\n36°")
+
+            rvSpeed.layoutManager = LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
+            rvSpeed.adapter = RecyclerAdapter(speedLabels)
+            rvSpeed.scrollToPosition(Int.MAX_VALUE/2)
+
+            val filterLabels = arrayOf("N/A\n(0)",
+                "Light Yellow\n(-1)",
+                "Medium Yellow\n(-1.5)",
+                "Sport\n(-1)",
+                "Light Green\n(-1)",
+                "Green\n(-1.5)",
+                "Light Orange\n(-1.5)",
+                "Orange\n(-2)",
+                "Medium Orange\n(-2.5)",
+                "Dark Orange\n(-3)",
+                "Light Red\n(-2)",
+                "Red\n(-2.5)",
+                "Medium Red\n(-3)",
+                "Dark Red\n(-3.5)",
+                "Light Blue\n(-0.5)",
+                "Grey 2\n(-2)",
+                "Grey 4\n(-4)",
+                "Ultra-Violet\n(-0.5)",
+                "H1\n(-0.5)")
+
+            rvFilter.layoutManager = LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
+            rvFilter.adapter = RecyclerAdapter(filterLabels)
+            rvFilter.scrollToPosition(Int.MAX_VALUE/2)
+
             btnTakePicture.setOnClickListener { takePicture() }
             bpExposure.setOnClickListener { openSettings() }
             btnGallery.setOnClickListener { openPreview() }
@@ -142,6 +197,11 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
             flExposure.setOnClickListener { flExposure.visibility = View.GONE }
             btnContrast.setOnClickListener { flContrast.visibility = View.VISIBLE }
             flContrast.setOnClickListener { flContrast.visibility = View.GONE }
+            btnSpeed.setOnClickListener { flSpeed.visibility = View.VISIBLE }
+            flSpeed.setOnClickListener { flSpeed.visibility = View.GONE }
+            btnFilter.setOnClickListener { flFilter.visibility = View.VISIBLE }
+            flFilter.setOnClickListener { flFilter.visibility = View.GONE }
+
             sliderContrast.run {
                 valueFrom = 0.2f
                 valueTo = 2.0f
