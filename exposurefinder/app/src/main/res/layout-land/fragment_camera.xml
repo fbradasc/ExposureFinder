@@ -50,6 +50,7 @@
         android:background="@android:color/transparent"
         android:text="LV : \nEV : \nISO : \nTV : \nAV : "
         android:textColor="@android:color/white"
+        app:layout_constraintWidth_percent="0.06"
         app:layout_constraintTop_toBottomOf="@id/btnTakePicture"
         app:layout_constraintEnd_toStartOf="@id/textExposure"
         app:layout_constraintStart_toStartOf="@id/btnTakePicture"

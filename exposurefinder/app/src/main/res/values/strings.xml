@@ -87,24 +87,24 @@
     </string-array>
 
     <string-array name="filter_values">
-        <item>---:0</item>
-        <item>Light Yellow:-1</item>
-        <item>Medium Yellow:-1.5</item>
-        <item>Sport:-1</item>
-        <item>Light Green:-1</item>
-        <item>Green:-1.5</item>
-        <item>Light Orange:-1.5</item>
-        <item>Orange:-2</item>
-        <item>Medium Orange:-2.5</item>
-        <item>Dark Orange:-3</item>
-        <item>Light Red:-2</item>
-        <item>Red:-2.5</item>
-        <item>Medium Red:-3</item>
-        <item>Dark Red:-3.5</item>
-        <item>Light Blue:-0.5</item>
-        <item>Grey 2:-2</item>
-        <item>Grey 4:-4</item>
-        <item>Ultra-Violet:-0.5</item>
-        <item>H1:-0.5</item>
+        <item>#000000:0</item>
+        <item>#FFFFC5:-1</item>
+        <item>#ffe200:-1.5</item>
+        <item>#ffffff:-1</item>
+        <item>#90EE90:-1</item>
+        <item>#00ff00:-1.5</item>
+        <item>#FFD580:-1.5</item>
+        <item>#FFA500:-2</item>
+        <item>#ffa70b:-2.5</item>
+        <item>#FF8C00:-3</item>
+        <item>#FF7F7F:-2</item>
+        <item>#ff0000:-2.5</item>
+        <item>#7d1211:-3</item>
+        <item>#D8b000:-3.5</item>
+        <item>#add8e6:-0.5</item>
+        <item>#fafafa:-2</item>
+        <item>#afafaf:-4</item>
+        <item>#0000af:-0.5</item>
+        <item>#000000:-0.5</item>
     </string-array>
 </resources>

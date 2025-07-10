@@ -11,7 +11,7 @@
         app:persistent="true"
         app:useSimpleSummaryProvider="true" />
     <ListPreference
-        android:defaultValue="0:0"
+        android:defaultValue="#000000:0"
         android:entries="@array/filter_labels"
         android:entryValues="@array/filter_values"
         android:key="filter"

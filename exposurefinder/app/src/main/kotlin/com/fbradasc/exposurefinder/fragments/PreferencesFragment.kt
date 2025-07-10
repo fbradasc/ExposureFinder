@@ -24,10 +24,6 @@ class PreferencesFragment : BaseFragment<FragmentPreferencesBinding>(R.layout.fr
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         binding.groupSettingsActions
-        /* supportFragmentManager
-                .beginTransaction()
-                .replace(R.id.settingsContainer, SettingsFragment())
-                .commit() */
         adjustInsets()
 
         binding.btnBack.setOnClickListener { onBackPressed() }

@@ -19,8 +19,6 @@ import android.view.View
 import android.widget.Toast
 import androidx.camera.core.*
 import androidx.camera.core.ImageCapture.*
-import androidx.camera.extensions.ExtensionMode
-import androidx.camera.extensions.ExtensionsManager
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
@@ -49,7 +47,6 @@ import android.graphics.ImageFormat
 import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
 import android.graphics.Canvas
-import android.graphics.Color
 import android.graphics.Matrix
 import android.graphics.Paint
 import android.hardware.camera2.CameraCaptureSession
@@ -58,8 +55,6 @@ import android.hardware.camera2.CaptureResult
 import android.hardware.camera2.TotalCaptureResult
 import android.os.Looper
 import android.util.Size
-import android.view.OrientationEventListener
-import android.view.Surface
 import androidx.annotation.OptIn
 import androidx.appcompat.app.AlertDialog
 import androidx.camera.core.ImageAnalysis
@@ -67,11 +62,11 @@ import androidx.camera.core.ImageProxy
 import androidx.exifinterface.media.ExifInterface
 import java.io.ByteArrayOutputStream
 import java.io.FileOutputStream
-import kotlin.math.floor
 import kotlin.math.pow
 
 import androidx.camera.camera2.interop.Camera2Interop
 import androidx.camera.camera2.interop.ExperimentalCamera2Interop
+import androidx.preference.PreferenceManager
 import kotlin.math.roundToInt
 
 class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_camera) {
@@ -313,9 +308,12 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
                             val rlv = roundVal(dlv, 10.0)
 
                             if (exposure != rlv) {
+                                fetchNewFilmSpeed(requireContext())
+                                fetchNewFilter(requireContext())
+
                                 exposure = rlv
 
-                                var dev = getEvFromLv(dlv, user_iso) // LV @ iso ASA
+                                var dev = getEvFromLv(dlv + filter_stops, film_speed) // LV @ iso ASA + filter compensation
                                 val result: Pair<Double, Double>? = fitEvInRange(dev)
 
                                 var stv="---"
@@ -334,10 +332,16 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
                                 }
 
                                 val rev = roundVal(dev, 10.0)
-                                val isv = user_iso.toInt()
+                                val isv = film_speed.toInt()
+
+                                var flt = ""
+
+                                if (filter_stops != 0.0) {
+                                    flt = "${filter_stops}"
+                                }
 
                                 binding.textExposure.text =
-                                    "${exposure}\n${rev}\n${isv}\n${stv}\n${sav}"
+                                    "${exposure}${flt}\n${rev}\n${isv}\n${stv}\n${sav}"
                             }
                         }
                     }
@@ -821,7 +825,43 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
 
         private var exposure: Double = 0.0
 
-        public var user_iso: Double = 400.0
+        private var film_speed: Double = 400.0
+
+        private var filter_stops: Double = 0.0
+
+        private var filter_color: String = "#000000"
+
+        public fun getFilmSpeed() = film_speed
+
+        public fun invalidateExposure() {
+            exposure = 0.0
+        }
+
+        private fun fetchNewFilmSpeed(context: Context) {
+            val newFilmSpeed = PreferenceManager.getDefaultSharedPreferences(context)
+                                                .getString("film_speed", "100")!!
+                                                .toDouble()
+
+            if (newFilmSpeed != film_speed) {
+                film_speed = newFilmSpeed
+            }
+        }
+
+        public fun fetchNewFilter(context: Context) {
+            val tokens = PreferenceManager.getDefaultSharedPreferences(context)
+                                          .getString("filter", "#000000:0.0")!!
+                                          .split(":").toTypedArray()
+
+            if (tokens.size == 2)
+            {
+                filter_color = tokens[0]
+                val newFilterStops = tokens[1].toDouble()
+
+                if (newFilterStops != filter_stops) {
+                    filter_stops = roundVal(newFilterStops, 10.0)
+                }
+            }
+        }
 
         public fun showSimpleDialog(context: Context, message: String) {
             AlertDialog.Builder(context, R.style.AppTheme_Dialog)

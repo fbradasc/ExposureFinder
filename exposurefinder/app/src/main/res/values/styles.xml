@@ -9,12 +9,7 @@
         <item name="android:textColorPrimary">@color/white</item>
         <item name="android:textColorSecondary">@color/colorAccent</item>
         <item name="android:textColorTertiary">@color/white</item>
-        <!-- <item name="android:background">@color/black</item> -->
-    </style>
-
-    <style name="ListFont" parent="@android:style/Widget.ListView">
-        <item name="android:textColor">#0000FF</item>
-        <item name="android:typeface">sans</item>
+        <item name="alertDialogTheme">@style/AppTheme.Dialog</item>
     </style>
 
     <style name="AppTheme.NoActionBar">
@@ -27,7 +22,6 @@
     <style name="AppTheme.PopupOverlay" parent="ThemeOverlay.MaterialComponents.Light" />
 
     <style name="AppTheme.Dialog" parent="Theme.AppCompat.Dialog">
-        <item name="android:background">@color/black</item>
+        <item name="android:background">@color/colorPrimary</item>
     </style>
-
 </resources>

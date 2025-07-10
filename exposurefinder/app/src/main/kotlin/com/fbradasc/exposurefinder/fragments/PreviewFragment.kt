@@ -37,7 +37,7 @@ class PreviewFragment : BaseFragment<FragmentPreviewBinding>(R.layout.fragment_p
                     val dlv = CameraFragment.calculateLv(dav, dtv, dsv) // EV @ 100 ASA
                     val rlv = CameraFragment.roundVal(dlv, 10.0)
 
-                    var dev = CameraFragment.getEvFromLv(dlv, CameraFragment.user_iso) // LV @ user_iso ASA
+                    var dev = CameraFragment.getEvFromLv(dlv, CameraFragment.getFilmSpeed()) // LV @ film_speed ASA
                     val result: Pair<Double, Double>? = CameraFragment.fitEvInRange(dev)
 
                     var stv="---"
@@ -56,7 +56,7 @@ class PreviewFragment : BaseFragment<FragmentPreviewBinding>(R.layout.fragment_p
                     }
 
                     val rev = CameraFragment.roundVal(dev, 10.0)
-                    val isv = CameraFragment.user_iso.toInt()
+                    val isv = CameraFragment.getFilmSpeed().toInt()
 
                     val msg = "LV: ${rlv} -> EV: ${rev} @ ${isv} ASA\n\n" +
                               " - TV: ${stv}\n" +

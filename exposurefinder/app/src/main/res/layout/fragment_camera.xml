@@ -15,7 +15,14 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent" >
+
+        <Button
+            android:id="@+id/bpExposure"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:background="@android:color/transparent" />
+    </androidx.camera.view.PreviewView>
 
     <ImageView
         android:id="@+id/filterViewFinder"
@@ -47,6 +54,7 @@
         android:background="@android:color/transparent"
         android:text="LV : \nEV : \nISO : \nTV : \nAV : "
         android:textColor="@android:color/white"
+        app:layout_constraintWidth_percent="0.15"
         app:layout_constraintBottom_toBottomOf="@id/btnTakePicture"
         app:layout_constraintEnd_toStartOf="@id/textExposure"
         app:layout_constraintStart_toStartOf="parent"
@@ -62,15 +70,6 @@
         app:layout_constraintBottom_toBottomOf="@id/btnTakePicture"
         app:layout_constraintEnd_toStartOf="@id/btnTakePicture"
         app:layout_constraintStart_toEndOf="@id/textLabels"
-        app:layout_constraintTop_toTopOf="@id/btnTakePicture"/>
-    <Button
-        android:id="@+id/bpExposure"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:background="@android:color/transparent"
-        app:layout_constraintBottom_toBottomOf="@id/btnTakePicture"
-        app:layout_constraintEnd_toStartOf="@id/btnTakePicture"
-        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="@id/btnTakePicture"/>
 
     <ImageButton
