@@ -11,8 +11,12 @@ import android.provider.MediaStore
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowInsets
+import android.view.WindowInsetsController
+import android.view.WindowManager
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
@@ -154,4 +158,23 @@ abstract class BaseFragment<B : ViewBinding>(private val fragmentLayout: Int) : 
      * An abstract function which will be called on the Back button press
      * */
     abstract fun onBackPressed()
+
+    @RequiresApi(Build.VERSION_CODES.R)
+    protected fun hideSystemUI() {
+        requireActivity().window.setDecorFitsSystemWindows(false)
+        requireActivity().window.insetsController?.apply {
+            // hide(WindowInsets.Type.systemBars())
+            hide(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
+            systemBarsBehavior = WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.R)
+    protected fun showSystemUI() {
+        requireActivity().window.setDecorFitsSystemWindows(true)
+        requireActivity().window.insetsController?.apply {
+            show(WindowInsets.Type.systemBars())
+            // show(WindowInsets.Type.statusBars() and WindowInsets.Type.navigationBars())
+        }
+    }
 }

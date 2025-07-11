@@ -1,7 +1,9 @@
 package com.fbradasc.exposurefinder.fragments
 
+import android.os.Build
 import android.os.Bundle
 import android.view.View
+import androidx.annotation.RequiresApi
 import androidx.core.view.WindowInsetsCompat
 import androidx.navigation.Navigation
 import com.fbradasc.exposurefinder.R
@@ -21,9 +23,11 @@ class PreferencesFragment : BaseFragment<FragmentPreferencesBinding>(R.layout.fr
             .commit()
     }
 
+    @RequiresApi(Build.VERSION_CODES.R)
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         binding.groupSettingsActions
+        showSystemUI()
         adjustInsets()
 
         binding.btnBack.setOnClickListener { onBackPressed() }

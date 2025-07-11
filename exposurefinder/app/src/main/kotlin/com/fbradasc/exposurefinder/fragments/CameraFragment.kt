@@ -56,6 +56,7 @@ import android.hardware.camera2.TotalCaptureResult
 import android.os.Looper
 import android.util.Size
 import androidx.annotation.OptIn
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AlertDialog
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
@@ -111,6 +112,7 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
         } ?: Unit
     }
 
+    @RequiresApi(Build.VERSION_CODES.R)
     @SuppressLint("ClickableViewAccessibility")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -147,26 +149,27 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
                     contrast = value.toFloat()
                 }
             }
-/* TODO: switch to settings fragment
+
             // This swipe gesture adds a fun gesture to switch between video and photo
             val swipeGestures = SwipeGestureDetector().apply {
-                setSwipeCallback(right = {
-                    Navigation.findNavController(view).navigate(R.id.action_camera_to_video)
-                })
+                setSwipeCallback(
+                    right = { openSettings() },
+                    left = { openPreview() }
+                )
             }
             val gestureDetectorCompat = GestureDetector(requireContext(), swipeGestures)
             cameraViewFinder.setOnTouchListener { _, motionEvent ->
-                if (gestureDetectorCompat.onTouchEvent(motionEvent)) return@setOnTouchListener false
-                return@setOnTouchListener true
+                return@setOnTouchListener !gestureDetectorCompat.onTouchEvent(motionEvent)
             }
-*/
         }
     }
 
     /**
      * Create some initial states
      * */
+    @RequiresApi(Build.VERSION_CODES.R)
     private fun initViews() {
+        hideSystemUI()
         binding.btnGrid.setImageResource(if (hasGrid) R.drawable.ic_grid_on else R.drawable.ic_grid_off)
         binding.groupGridLines.visibility = if (hasGrid) View.VISIBLE else View.GONE
         adjustInsets()
@@ -178,15 +181,20 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
     private fun adjustInsets() {
         activity?.window?.fitSystemWindows()
         binding.btnTakePicture.onWindowInsets { view, windowInsets ->
+            val inset = windowInsets.getInsets(WindowInsetsCompat.Type.displayCutout())
             if (resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT) {
-                view.bottomMargin =
-                    windowInsets.getInsets(WindowInsetsCompat.Type.systemBars()).bottom
+                view.bottomMargin = inset.bottom
             } else {
-                view.endMargin = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars()).right
+                view.endMargin = inset.right
             }
         }
         binding.btnGrid.onWindowInsets { view, windowInsets ->
-            view.topMargin = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars()).top
+            val inset = windowInsets.getInsets(WindowInsetsCompat.Type.displayCutout())
+            if (resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT) {
+                view.topMargin = inset.top
+            } else {
+                view.startMargin = inset.left
+            }
         }
     }
 
@@ -314,21 +322,28 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
                                 exposure = rlv
 
                                 var dev = getEvFromLv(dlv + filter_stops, film_speed) // LV @ iso ASA + filter compensation
-                                val result: Pair<Double, Double>? = fitEvInRange(dev)
 
-                                var stv="---"
-                                var sav="---"
+                                val result: Pair<Double, Double> = fitEvInRange(dev)
 
-                                if (result != null) {
-                                    stv = if (result.second > 1.0) {
-                                        val itv = result.second.toInt()
-                                        "1/${itv}"
-                                    } else {
-                                        val itv = (1.0 / result.second).toInt()
-                                        "${itv}"
-                                    }
+                                val stv = if (result.second <= -(Double.MAX_VALUE-1.0)) {
+                                    "<<<"
+                                } else if (result.second >= (Double.MAX_VALUE-1.0)) {
+                                    ">>>"
+                                } else if (result.second > 1.0) {
+                                    val itv = result.second.toInt()
+                                    "1/${itv}"
+                                } else {
+                                    val itv = (1.0 / result.second).toInt()
+                                    "${itv}"
+                                }
+
+                                val sav = if (result.first <= -(Double.MAX_VALUE-1.0)) {
+                                    "<<<"
+                                } else if (result.first >= (Double.MAX_VALUE-1.0)) {
+                                    ">>>"
+                                } else {
                                     val rav = roundVal(result.first.toDouble(), 10.0)
-                                    sav = "${rav}"
+                                    "${rav}"
                                 }
 
                                 val rev = roundVal(dev, 10.0)
@@ -881,27 +896,40 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
             }, durationMs)
         }
 
-       private fun findAvTvPair(
+        private fun findAvTvPair(
             allowedAvs: List<Double>,
             allowedTvs: List<Double>,
             targetEv  : Double,
-        ): Pair<Double, Double>? {
-            var closestPair: Pair<Double, Double>? = null
+        ): Pair<Double, Double> {
+            var closestPair: Pair<Double, Double> = Pair(Double.MAX_VALUE, Double.MIN_VALUE)
             var minDiff = Double.MAX_VALUE
-            for (av in allowedAvs) {
-                for (tv in allowedTvs) {
-                    val ev = calculateEv(av, tv)
+            for (fitAv in allowedAvs) {
+                for (fitTv in allowedTvs) {
+                    val ev = calculateEv(fitAv, fitTv)
                     val diff = kotlin.math.abs(ev - targetEv)
                     if (diff < minDiff) {
                         minDiff = diff
-                        closestPair = Pair(av, tv)
+                        closestPair = Pair(fitAv, fitTv)
                     }
                 }
             }
+
+            if (minDiff > 1.0) {
+                if (closestPair.first == allowedAvs.first() && closestPair.second == allowedTvs.last()) {
+                    closestPair = Pair(Double.MAX_VALUE, Double.MAX_VALUE)
+                }
+                else
+                if (closestPair.first == allowedAvs.last() && closestPair.second == allowedTvs.first()) {
+                    closestPair = Pair(Double.MIN_VALUE, Double.MIN_VALUE)
+                }
+            }
+
+            Log.d(TAG, "Min EV Diff: ${minDiff} -> ${closestPair} - AV[${allowedAvs.first()}..${allowedAvs.last()}] - TV[${allowedTvs.first()}..${allowedTvs.last()}]")
+
             return closestPair
         }
 
-        public fun fitEvInRange(ev: Double): Pair<Double, Double>? {
+        public fun fitEvInRange(ev: Double): Pair<Double, Double> {
             val allowedAvs = listOf<Double>(/*1.4, 2.8,*/ 3.5, 4.0, 5.6, 8.0, 11.0, 16.0, 22.0)
             val allowedTvs = listOf<Double>(/*1000.0,*/ 500.0, 250.0, 125.0, 60.0, 30.0, 15.0, 8.0, 4.0, 2.0, 1.0, 0.5, 0.25)
             return findAvTvPair(allowedAvs, allowedTvs, ev)
