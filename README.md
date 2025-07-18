@@ -1,4 +1,4 @@
-Exposure Finder
+## Exposure Finder
 
 A black and white photo exposure preview camera application created with Android Jetpack CameraX API
 
