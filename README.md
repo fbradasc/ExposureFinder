@@ -1,13 +1,6 @@
-# <img src="https://github.com/fbradasc/exposurefinder/blob/master/exposurefinder/app/src/main/ic_launcher-web.png"  width="50" height="50" /> &nbsp;&nbsp;&nbsp; Exposure Finder
+Exposure Finder
 
 A black and white photo exposure preview camera application created with Android Jetpack CameraX API
-
-[![API](https://img.shields.io/badge/API-21%2B-yellow.svg?style=flat-square)](https://android-arsenal.com/api?level=21)
-
-### UI Structure and features 
-
-| <p align="start">1. Take photo</p><p align="start">2. Open gallery</p><p align="start">3. Toggle grid</p><p align="start">4. Change contrast</p><p align="start">5. Adjust exposure</p>|<img src="https://github.com/fbradasc/exposurefinder/blob/master/media/c1.jpg" width="250" />|
-|-----------------------------------|---------------------------------------------|
 
 ## Licence
 
